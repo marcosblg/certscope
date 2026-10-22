@@ -10,7 +10,13 @@ Public CAs are shortening certificate validity: 200 days from March 2026, 100 fr
 
 🌐 In English and Spanish: it opens in your browser's language and switches with the **ES / EN** button.
 
-![CertScope](docs/screenshot.png)
+### 👉 [Try it now in your browser](https://marcosblg.github.io/certscope/)
+
+Nothing to install or download: the link opens the tool with sample certificates and domains.
+
+![CertScope demo](docs/demo.en.gif)
+
+🎬 **[Watch the demo video (30 s)](docs/demo.en.mp4)**: a failed auto-renewal is renewed by hand by pasting the PEM, a new certificate is added and the reminder calendar is exported.
 
 ## What it does
 
@@ -50,7 +56,7 @@ It doesn't scan the network or connect to your servers to read the certificate: 
 
 ## How to use it
 
-1. Download `index.html`.
+1. Download `index.html` (or open the [demo link](https://marcosblg.github.io/certscope/)).
 2. Double-click it to open in Chrome, Edge or Firefox. It starts with sample data.
 3. In *Settings* click **Start blank** and paste your certificates' PEM (key **I**).
 4. Click bottom left to have it save automatically to a file of your own.

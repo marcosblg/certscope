@@ -10,7 +10,13 @@ Las CA públicas están acortando la validez de los certificados: 200 días desd
 
 🌐 En español y en inglés: sale en el idioma de tu navegador y se cambia con el botón **ES / EN**.
 
-![CertScope](docs/captura.png)
+### 👉 [Pruébalo ahora en el navegador](https://marcosblg.github.io/certscope/)
+
+No hay que instalar ni descargar nada: el enlace abre la herramienta con certificados y dominios de ejemplo.
+
+![Demostración de CertScope](docs/demo.gif)
+
+🎬 **[Ver el vídeo de demostración (30 s)](docs/demo.mp4)**: una renovación automática que ha fallado se renueva a mano pegando el PEM, se da de alta un certificado nuevo y se exporta el calendario de avisos.
 
 ## Qué hace
 
@@ -50,7 +56,7 @@ No escanea la red ni se conecta a tus servidores para leer el certificado: el HT
 
 ## Cómo usarlo
 
-1. Descarga `index.html`.
+1. Descarga `index.html` (o abre el [enlace de la demo](https://marcosblg.github.io/certscope/)).
 2. Ábrelo con doble clic en Chrome, Edge o Firefox. Arranca con datos de ejemplo.
 3. En *Ajustes* pulsa **Empezar en blanco** y pega el PEM de tus certificados (tecla **I**).
 4. Pulsa abajo a la izquierda para que se guarde solo en un archivo tuyo.
