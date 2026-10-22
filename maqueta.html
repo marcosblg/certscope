@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'">
+<title>CertScope — maqueta</title>
+<style>
+/* Guía visual Scope: neutro, bordes de 1px, el color solo dice estado. */
+:root{
+  --bg:#0d0e10; --side:#111214; --panel:#16171a; --raise:#1c1d21; --hover:#1f2024; --sel:#25262b;
+  --line:#232428; --line2:#2e3035;
+  --tx:#e8e8ea; --tx2:#a0a1a8; --tx3:#6c6d75;
+  --ok:#4cb782; --warn:#e8a93a; --bad:#eb5757;
+  --okbg:#4cb7821a; --warnbg:#e8a93a1c; --badbg:#eb57571c;
+  --focus:#e8e8ea;
+  --f:"Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  --m:"JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+}
+html[data-theme="light"]{
+  --bg:#fbfbfb; --side:#f4f4f5; --panel:#ffffff; --raise:#ffffff; --hover:#efeff1; --sel:#e7e7ea;
+  --line:#e4e4e7; --line2:#d4d4d8;
+  --tx:#18181b; --tx2:#52525b; --tx3:#8a8a93;
+  --ok:#1f8f5a; --warn:#b4760a; --bad:#cf3a3a;
+  --okbg:#1f8f5a14; --warnbg:#b4760a17; --badbg:#cf3a3a14;
+  --focus:#18181b;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.45 var(--f);font-feature-settings:"cv11","ss01","tnum";-webkit-font-smoothing:antialiased;overflow:hidden;
+  display:grid;grid-template-rows:40px 1fr 24px;grid-template-columns:224px 1fr 288px;grid-template-areas:"top top top" "tree main insp" "bar bar bar"}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+svg.i{width:14px;height:14px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.mono{font-family:var(--m);font-size:12px}
+kbd{font:500 10.5px/1 var(--m);color:var(--tx3);border:1px solid var(--line2);border-radius:4px;padding:2px 4px;background:var(--panel);min-width:16px;text-align:center;display:inline-block}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;border:3px solid var(--bg)}
+
+/* barra superior */
+#top{grid-area:top;display:flex;align-items:center;gap:8px;padding:0 10px 0 14px;border-bottom:1px solid var(--line);background:var(--side)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:-.1px;width:208px}
+.brand svg{width:16px;height:16px}
+.brand span{color:var(--tx3);font-weight:400}
+.crumb{display:flex;align-items:center;gap:6px;color:var(--tx2)}
+.crumb b{color:var(--tx);font-weight:500}
+.crumb svg{color:var(--tx3);width:12px;height:12px}
+.sp{flex:1}
+.cmdk{display:flex;align-items:center;gap:8px;width:340px;height:26px;padding:0 6px 0 9px;border:1px solid var(--line2);border-radius:6px;color:var(--tx3);background:var(--bg)}
+.cmdk:hover{border-color:var(--tx3)}
+.cmdk span{flex:1;text-align:left}
+.b{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border:1px solid var(--line2);border-radius:6px;color:var(--tx2);font-weight:500}
+.b:hover{background:var(--hover);color:var(--tx)}
+.b.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.b.pri:hover{opacity:.88}
+.b.pri kbd{background:transparent;color:inherit;border-color:currentColor;opacity:.55}
+.b.ic{width:26px;padding:0;justify-content:center}
+.seg{display:flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden;height:26px}
+.seg button{padding:0 8px;color:var(--tx3);font-weight:500;font-size:12px}
+.seg button.on{background:var(--sel);color:var(--tx)}
+
+/* árbol */
+#tree{grid-area:tree;background:var(--side);border-right:1px solid var(--line);overflow:auto;padding:8px 6px}
+#tree .seg{margin:0 4px 10px;height:24px}
+#tree .seg button{flex:1}
+.th{display:flex;align-items:center;justify-content:space-between;padding:10px 8px 4px;color:var(--tx3);font-size:11px;font-weight:500;letter-spacing:.2px}
+.tn{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px;border-radius:5px;color:var(--tx2);cursor:default;white-space:nowrap}
+.tn:hover{background:var(--hover)}
+.tn.on{background:var(--sel);color:var(--tx)}
+.tn .ch{width:10px;height:10px;color:var(--tx3)}
+.tn .lbl{flex:1;overflow:hidden;text-overflow:ellipsis}
+.tn .n{font:11px var(--m);color:var(--tx3)}
+.tn.l2{padding-left:24px}
+.tn.l3{padding-left:40px}
+.dots{display:flex;gap:3px}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+
+/* zona central */
+#main{grid-area:main;display:grid;grid-template-rows:auto auto 1fr auto;min-width:0;min-height:0}
+.head{display:flex;align-items:flex-end;gap:16px;padding:14px 18px 0}
+.head h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.2px}
+.head p{margin:2px 0 0;color:var(--tx3);font-size:12px}
+.stats{display:flex;gap:18px;margin-left:auto;padding-bottom:2px}
+.stat{display:flex;align-items:center;gap:6px;color:var(--tx2)}
+.stat b{font:500 13px var(--m);color:var(--tx)}
+.tabs{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--line)}
+.tabs button{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;color:var(--tx3);font-weight:500;border-bottom:1.5px solid transparent;margin-bottom:-1px}
+.tabs button:hover{color:var(--tx)}
+.tabs button.on{color:var(--tx);border-color:var(--tx)}
+.tabs .n{font:11px var(--m);color:var(--tx3)}
+.tabs .tools{margin-left:auto;display:flex;gap:6px;align-items:center;padding-bottom:4px}
+.filter{display:flex;align-items:center;gap:6px;height:24px;padding:0 8px;border:1px dashed var(--line2);border-radius:6px;color:var(--tx3);font-size:12px}
+.wrap{overflow:auto;min-height:0}
+table{width:100%;border-collapse:collapse;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--bg);text-align:left;font-weight:500;font-size:11.5px;color:var(--tx3);padding:7px 10px;border-bottom:1px solid var(--line);z-index:1}
+thead th.r,td.r{text-align:right}
+tbody td{padding:0 10px;height:30px;border-bottom:1px solid var(--line);color:var(--tx2)}
+tbody tr:hover td{background:var(--hover)}
+tbody tr.on td{background:var(--sel)}
+tbody tr.on td:first-child{box-shadow:inset 2px 0 var(--tx)}
+td.tr{max-width:170px;overflow:hidden;text-overflow:ellipsis}
+td.cn{color:var(--tx);font-weight:500}
+td.cn .san{color:var(--tx3);font-weight:400;margin-left:6px;font-size:11.5px}
+.new{font:600 9.5px var(--m);letter-spacing:.4px;border:1px solid var(--line2);color:var(--tx);border-radius:4px;padding:1px 4px;margin-left:6px;vertical-align:1px}
+.days{font:500 12px var(--m)}
+.days.warn{color:var(--warn)}.days.bad{color:var(--bad)}
+.life{display:inline-block;width:36px;height:4px;border-radius:2px;background:var(--line2);vertical-align:middle;margin-right:8px;overflow:hidden}
+.life i{display:block;height:100%;background:var(--tx3)}
+.life.warn i{background:var(--warn)}.life.bad i{background:var(--bad)}
+.auto svg{width:13px;height:13px}
+.auto.y{color:var(--tx2)}.auto.n{color:var(--tx3)}
+
+/* registro de cambios */
+#log{border-top:1px solid var(--line);background:var(--side);height:150px;display:grid;grid-template-rows:30px 1fr}
+#log .lh{display:flex;align-items:center;gap:14px;padding:0 14px;border-bottom:1px solid var(--line);color:var(--tx3);font-size:12px}
+#log .lh b{color:var(--tx);font-weight:500}
+#log .lh .sp{flex:1}
+#log .wrap td{height:24px;font-size:12px}
+#log .wrap td:first-child{color:var(--tx3);font:11.5px var(--m);width:130px}
+#log .wrap td.who{color:var(--tx3);width:90px}
+#log .wrap td.act{color:var(--tx);width:170px}
+
+/* inspector */
+#insp{grid-area:insp;border-left:1px solid var(--line);background:var(--panel);overflow:auto;min-height:0}
+.ih{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+.ih .st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 7px 2px 6px;border-radius:5px}
+.st.warn{background:var(--warnbg);color:var(--warn)}.st.bad{background:var(--badbg);color:var(--bad)}.st.ok{background:var(--okbg);color:var(--ok)}
+.ih h2{margin:8px 0 2px;font-size:14px;font-weight:600;letter-spacing:-.2px;word-break:break-all}
+.ih p{margin:0;color:var(--tx3);font-size:12px}
+.tl{margin:12px 0 2px;height:4px;border-radius:2px;background:var(--line2);position:relative}
+.tl i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--warn)}
+.tl u{position:absolute;top:-3px;width:1px;height:10px;background:var(--tx2)}
+.tll{display:flex;justify-content:space-between;color:var(--tx3);font:11px var(--m);margin-top:6px}
+.sec{padding:12px 16px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 8px;font-size:11px;font-weight:500;color:var(--tx3);letter-spacing:.2px}
+dl{display:grid;grid-template-columns:96px 1fr;gap:7px 10px;margin:0}
+dt{color:var(--tx3)}
+dd{margin:0;color:var(--tx);min-width:0;overflow-wrap:anywhere}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font:11.5px var(--m);border:1px solid var(--line2);border-radius:4px;padding:1px 6px;color:var(--tx2)}
+.acts{display:flex;flex-direction:column;gap:2px;padding:10px 8px}
+.acts button{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;border-radius:5px;color:var(--tx2);text-align:left}
+.acts button:hover{background:var(--hover);color:var(--tx)}
+.acts button span{flex:1}
+.note{color:var(--tx2);line-height:1.5}
+
+/* barra de estado */
+#bar{grid-area:bar;display:flex;align-items:center;gap:16px;padding:0 12px;border-top:1px solid var(--line);background:var(--side);color:var(--tx3);font-size:11.5px}
+#bar .k{display:flex;align-items:center;gap:5px}
+#bar .sp{flex:1}
+#bar .saved{display:flex;align-items:center;gap:6px}
+
+/* paleta Ctrl+K */
+#pal{position:fixed;inset:0;background:#0000007a;display:none;align-items:flex-start;justify-content:center;padding-top:110px;z-index:50}
+html[data-theme="light"] #pal{background:#18181b33}
+#pal.on{display:flex}
+.pbox{width:620px;background:var(--raise);border:1px solid var(--line2);border-radius:10px;box-shadow:0 24px 70px -20px #000c;overflow:hidden}
+.pin{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;border-bottom:1px solid var(--line)}
+.pin input{flex:1;background:none;border:0;outline:none;font-size:14.5px}
+.pin input::placeholder{color:var(--tx3)}
+.pin svg{color:var(--tx3);width:16px;height:16px}
+.plist{max-height:380px;overflow:auto;padding:6px}
+.pg{padding:8px 10px 4px;color:var(--tx3);font-size:11px;font-weight:500}
+.pi{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:6px;color:var(--tx2)}
+.pi.on{background:var(--sel);color:var(--tx)}
+.pi .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi .t small{color:var(--tx3);margin-left:8px;font-size:12px}
+.pi .k{display:flex;gap:3px}
+.pf{display:flex;align-items:center;gap:14px;padding:0 12px;height:34px;border-top:1px solid var(--line);color:var(--tx3);font-size:11.5px}
+.pf .sp{flex:1}
+.pf span{display:flex;align-items:center;gap:5px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="logo" viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="13" height="13" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+  <symbol id="down" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+  <symbol id="search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></symbol>
+  <symbol id="plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="paste" viewBox="0 0 16 16"><rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3V2h4v1M6 7h4M6 10h3"/></symbol>
+  <symbol id="export" viewBox="0 0 16 16"><path d="M8 10V2M5 5l3-3 3 3M3 10v3h10v-3"/></symbol>
+  <symbol id="cal" viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/></symbol>
+  <symbol id="moon" viewBox="0 0 16 16"><path d="M13 9.5A5.5 5.5 0 016.5 3a5.5 5.5 0 106.5 6.5z"/></symbol>
+  <symbol id="layers" viewBox="0 0 16 16"><path d="M8 2l6 3-6 3-6-3 6-3zM2 8l6 3 6-3M2 11l6 3 6-3"/></symbol>
+  <symbol id="server" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="4.5" rx="1"/><rect x="2.5" y="9" width="11" height="4.5" rx="1"/><path d="M5 4.75h.01M5 11.25h.01"/></symbol>
+  <symbol id="globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.8"/><path d="M2.2 8h11.6M8 2.2c1.7 1.6 2.4 3.6 2.4 5.8S9.7 12.2 8 13.8C6.3 12.2 5.6 10.2 5.6 8S6.3 3.8 8 2.2z"/></symbol>
+  <symbol id="cert" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="8" rx="1.2"/><path d="M5 5.5h6M5 7.5h3.5"/><circle cx="10.8" cy="11.5" r="1.8"/><path d="M9.8 13l-.4 1.8 1.4-.7 1.4.7-.4-1.8"/></symbol>
+  <symbol id="refresh" viewBox="0 0 16 16"><path d="M13 3v3.5H9.5M3 13V9.5h3.5"/><path d="M12.6 6.5A5 5 0 004.2 4.8M3.4 9.5a5 5 0 008.4 1.7"/></symbol>
+  <symbol id="check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></symbol>
+  <symbol id="dash" viewBox="0 0 16 16"><path d="M5 8h6"/></symbol>
+  <symbol id="edit" viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3l7.5-7.5z"/></symbol>
+  <symbol id="copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.3"/><path d="M10.5 5.5v-2a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1h2"/></symbol>
+  <symbol id="file" viewBox="0 0 16 16"><path d="M9 2H4.5A1.5 1.5 0 003 3.5v9A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V6L9 2z"/><path d="M9 2v4h4"/></symbol>
+  <symbol id="arrow" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></symbol>
+  <symbol id="filter" viewBox="0 0 16 16"><path d="M2.5 3.5h11L9.5 8.5v4l-3 1.5v-5.5z"/></symbol>
+</svg>
+
+<header id="top">
+  <div class="brand"><svg><use href="#logo"/></svg>CertScope <span>1.0</span></div>
+  <div class="crumb"><svg class="i"><use href="#layers"/></svg>Entornos<svg class="i"><use href="#chev"/></svg><b>Producción</b></div>
+  <div class="sp"></div>
+  <button class="cmdk" onclick="pal(1)"><svg class="i"><use href="#search"/></svg><span>Buscar certificado o ejecutar acción…</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
+  <div class="sp"></div>
+  <button class="b"><svg class="i"><use href="#paste"/></svg>Pegar PEM <kbd>I</kbd></button>
+  <button class="b"><svg class="i"><use href="#export"/></svg>Exportar</button>
+  <button class="b pri"><svg class="i"><use href="#plus"/></svg>Añadir <kbd>N</kbd></button>
+  <div class="seg"><button class="on">ES</button><button>EN</button></div>
+  <button class="b ic" title="Tema" onclick="theme()"><svg class="i"><use href="#moon"/></svg></button>
+</header>
+
+<nav id="tree">
+  <div class="seg"><button class="on">Entorno</button><button>Cliente</button><button>Dominio</button></div>
+  <div class="tn"><svg class="i"><use href="#layers"/></svg><span class="lbl">Todo el inventario</span><span class="n">14</span></div>
+  <div class="th">ENTORNOS</div>
+  <div id="tenv"></div>
+  <div class="th">DOMINIOS REGISTRADOS</div>
+  <div id="tdom"></div>
+</nav>
+
+<main id="main">
+  <div class="head">
+    <div><h1>Producción</h1><p>9 certificados en 7 servidores · aviso a 30 días</p></div>
+    <div class="stats">
+      <div class="stat"><span class="dot bad"></span>Vencidos <b>2</b></div>
+      <div class="stat"><span class="dot warn"></span>En aviso <b>2</b></div>
+      <div class="stat"><span class="dot ok"></span>OK <b>5</b></div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="on"><svg class="i"><use href="#cert"/></svg>Certificados <span class="n">9</span></button>
+    <button><svg class="i"><use href="#globe"/></svg>Dominios <span class="n">4</span></button>
+    <button><svg class="i"><use href="#cal"/></svg>Calendario</button>
+    <button><svg class="i"><use href="#file"/></svg>Registro</button>
+    <div class="tools"><span class="filter"><svg class="i"><use href="#filter"/></svg>Filtrar <kbd>F</kbd></span><span class="filter">Orden: vence antes</span></div>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead><tr><th style="width:18px"></th><th>CN / SAN</th><th>Emisor</th><th>Instalado en</th><th>Responsable</th><th>Fin</th><th class="r">Quedan</th><th title="Renovación automática">Auto</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <section id="log">
+    <div class="lh"><b>Registro de cambios</b><span>Desde tu última visita (hace 6 días): 3 cambios</span><span class="sp"></span><span>Ocultar <kbd>L</kbd></span></div>
+    <div class="wrap"><table><tbody id="logrows"></tbody></table></div>
+  </section>
+</main>
+
+<aside id="insp">
+  <div class="ih">
+    <span class="st warn"><span class="dot warn"></span>Vence en 17 días</span>
+    <h2>mail.acme-logistica.es</h2>
+    <p>Sectigo RSA Domain Validation Secure Server CA</p>
+    <div class="tl"><i style="width:95.4%"></i><u style="left:91.9%" title="Inicio del aviso"></u></div>
+    <div class="tll"><span>2025-11-04</span><span>2026-11-08</span></div>
+  </div>
+  <div class="sec"><h3>NOMBRES (SAN)</h3>
+    <div class="chips"><span class="chip">mail.acme-logistica.es</span><span class="chip">autodiscover.acme-logistica.es</span><span class="chip">smtp.acme-logistica.es</span></div>
+  </div>
+  <div class="sec"><h3>DESPLIEGUE</h3>
+    <dl>
+      <dt>Servidor</dt><dd>srv-mail01</dd>
+      <dt>Servicio</dt><dd>Exchange 2019 · IIS + SMTP</dd>
+      <dt>Entorno</dt><dd>Producción</dd>
+      <dt>Cliente</dt><dd>Acme Logística</dd>
+      <dt>Responsable</dt><dd>Marta Blanco</dd>
+      <dt>Renov. auto</dt><dd>No</dd>
+    </dl>
+  </div>
+  <div class="sec"><h3>CERTIFICADO</h3>
+    <dl>
+      <dt>Clave</dt><dd>RSA 2048</dd>
+      <dt>Válido desde</dt><dd class="mono">2025-11-04</dd>
+      <dt>Hasta</dt><dd class="mono">2026-11-08</dd>
+      <dt>Nº serie</dt><dd class="mono">7c:1e:94:0b:52:…:a3</dd>
+      <dt>SHA-256</dt><dd class="mono">4F:2A:9C:E1:…:0D:77</dd>
+    </dl>
+  </div>
+  <div class="sec"><h3>NOTAS</h3>
+    <div class="note">Compra anual en el proveedor. Tras renovar: importar en srv-mail01 y asignar a IIS y SMTP con Enable-ExchangeCertificate.</div>
+  </div>
+  <div class="acts">
+    <button><svg class="i"><use href="#refresh"/></svg><span>Registrar renovación</span><kbd>R</kbd></button>
+    <button><svg class="i"><use href="#edit"/></svg><span>Editar</span><kbd>E</kbd></button>
+    <button><svg class="i"><use href="#copy"/></svg><span>Copiar nombres SAN</span><kbd>C</kbd></button>
+    <button><svg class="i"><use href="#cal"/></svg><span>Añadir al calendario .ics</span></button>
+  </div>
+</aside>
+
+<footer id="bar">
+  <span class="saved"><span class="dot ok"></span>Guardado en certificados.json</span>
+  <span>14 certificados · 4 dominios</span>
+  <span class="sp"></span>
+  <span class="k"><kbd>J</kbd><kbd>K</kbd> moverse</span>
+  <span class="k"><kbd>↵</kbd> abrir</span>
+  <span class="k"><kbd>/</kbd> filtrar</span>
+  <span class="k"><kbd>Ctrl</kbd><kbd>K</kbd> paleta</span>
+  <span class="k"><kbd>?</kbd> atajos</span>
+</footer>
+
+<div id="pal" onclick="if(event.target===this)pal(0)">
+  <div class="pbox">
+    <div class="pin"><svg class="i"><use href="#search"/></svg><input id="q" placeholder="Buscar certificados, servidores, acciones…" oninput="drawPal()"><kbd>Esc</kbd></div>
+    <div class="plist" id="plist"></div>
+    <div class="pf"><span><kbd>↑</kbd><kbd>↓</kbd> elegir</span><span><kbd>↵</kbd> abrir</span><span><kbd>Tab</kbd> acciones</span><span class="sp"></span><span>CertScope</span></div>
+  </div>
+</div>
+
+<script>
+const HOY=new Date('2026-10-22'), AVISO=30;
+// [cn, sanExtra, emisor, desde, hasta, servidor, servicio, responsable, auto, entorno, nuevo]
+const C=[
+ ['vpn.acme-logistica.es',0,'AlphaSSL CA - SHA256 - G4','2025-10-15','2026-10-19','fw-edge01','FortiGate SSL-VPN','Marta Blanco',0,'Producción'],
+ ['nas01.transportesruiz.es',1,'Sectigo RSA DV','2025-10-09','2026-10-12','nas01','Synology DSM','Pablo Ruiz',0,'Producción'],
+ ['rdweb.transportesruiz.es',1,"Let's Encrypt R10",'2026-08-04','2026-11-02','srv-rdgw','RD Gateway (win-acme)','Pablo Ruiz',1,'Producción',1],
+ ['mail.acme-logistica.es',2,'Sectigo RSA DV','2025-11-04','2026-11-08','srv-mail01','Exchange 2019','Marta Blanco',0,'Producción'],
+ ['citas.clinicasoler.com',0,"Let's Encrypt E6",'2026-09-01','2026-11-30','lb-01','HAProxy','Jordi Soler',1,'Producción'],
+ ['www.acme-logistica.es',1,"Let's Encrypt R11",'2026-09-15','2026-12-14','srv-web01','nginx','Marta Blanco',1,'Producción'],
+ ['api.clinicasoler.com',0,"Let's Encrypt E5",'2026-10-14','2027-01-12','lb-01','HAProxy','Jordi Soler',1,'Producción',1],
+ ['*.clinicasoler.com',1,'DigiCert Global G2 TLS RSA','2026-08-20','2027-03-02','lb-01','HAProxy','Jordi Soler',0,'Producción'],
+ ['sede.villanueva.es',3,'AC Componentes Informáticos','2026-02-27','2027-03-31','srv-sede','IIS 10','Ana Ortega',0,'Producción'],
+];
+const days=d=>Math.round((new Date(d)-HOY)/864e5);
+const st=n=>n<0?'bad':n<=AVISO?'warn':'ok';
+const ico=id=>`<svg class="i"><use href="#${id}"/></svg>`;
+rows.innerHTML=C.map((c,i)=>{const n=days(c[4]),s=st(n),tot=days(c[4])-days(c[3]),used=Math.min(100,Math.max(0,(tot-n)/tot*100));
+ return `<tr class="${c[0].startsWith('mail.')?'on':''}"><td><span class="dot ${s}"></span></td>
+ <td class="cn">${c[0]}${c[1]?`<span class="san">+${c[1]}</span>`:''}${c[10]?'<span class="new">NUEVO</span>':''}</td>
+ <td class="tr">${c[2]}</td><td class="tr">${c[5]} <span style="color:var(--tx3)">· ${c[6]}</span></td><td>${c[7]}</td>
+ <td class="mono">${c[4]}</td>
+ <td class="r"><span class="life ${s}"><i style="width:${used}%"></i></span><span class="days ${s}">${n<0?n+' d':n+' d'}</span></td>
+ <td class="auto ${c[8]?'y':'n'}">${ico(c[8]?'check':'dash')}</td></tr>`}).join('');
+
+const T=[['Producción',[['fw-edge01','bad',1],['nas01','bad',1],['srv-mail01','warn',1],['srv-rdgw','warn',1],['lb-01','ok',3],['srv-web01','ok',1],['srv-sede','ok',1]]],
+ ['Preproducción',[['srv-staging','ok',2]]],['Laboratorio',[['pve01','ok',1],['unifi','warn',1],['ca-lab','ok',1]]]];
+tenv.innerHTML=T.map(([g,h],gi)=>`<div class="tn${gi?'':' on'}"><svg class="i ch"><use href="#${gi==2?'chev':'down'}"/></svg><span class="lbl">${g}</span><span class="dots">${[...new Set(h.map(x=>x[1]))].sort().map(s=>`<span class="dot ${s}"></span>`).join('')}</span><span class="n">${h.reduce((a,x)=>a+x[2],0)}</span></div>`
+ +(gi==2?'':h.map(([n,s,k])=>`<div class="tn l2">${ico('server')}<span class="lbl">${n}</span><span class="dot ${s}"></span><span class="n">${k}</span></div>`).join(''))).join('');
+tdom.innerHTML=[['transportesruiz.es','2026-10-28'],['clinicasoler.com','2026-11-15'],['villanueva.es','2027-01-20'],['acme-logistica.es','2027-05-03']]
+ .map(([d,f])=>{const n=days(f);return `<div class="tn">${ico('globe')}<span class="lbl">${d}</span><span class="n" style="color:var(--${st(n)})">${n} d</span></div>`}).join('');
+
+logrows.innerHTML=[
+ ['2026-10-22 09:14','Marcos','Importado desde PEM','api.clinicasoler.com — Let\'s Encrypt E5, vence 2027-01-12'],
+ ['2026-10-21 17:02','Marcos','Cambio de responsable','rdweb.transportesruiz.es — de «sin asignar» a Pablo Ruiz'],
+ ['2026-10-19 00:00','sistema','Vencido','vpn.acme-logistica.es — pasó a vencido'],
+ ['2026-10-15 11:40','Marcos','Renovación registrada','*.clinicasoler.com — nuevo fin 2027-03-02'],
+ ['2026-10-12 00:00','sistema','Vencido','nas01.transportesruiz.es — pasó a vencido'],
+].map(r=>`<tr><td>${r[0]}</td><td class="who">${r[1]}</td><td class="act">${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+
+const ACC=[['plus','Añadir certificado',['N']],['paste','Importar certificado PEM',['I']],['globe','Añadir dominio',['D']],['cal','Exportar calendario .ics',[]],['export','Exportar CSV · JSON · PDF',[]],['arrow','Ir a Dominios registrados',['G','D']],['arrow','Ir a Registro de cambios',['G','R']]];
+function drawPal(){const q=(document.getElementById('q').value||'').toLowerCase();
+ const cs=C.filter(c=>(c[0]+c[5]+c[6]+c[2]).toLowerCase().includes(q)).sort((a,b)=>days(a[4])-days(b[4])).slice(0,q?6:4);
+ const as=ACC.filter(a=>a[1].toLowerCase().includes(q));
+ plist.innerHTML=(cs.length?`<div class="pg">${q?'Certificados':'Vencen antes'}</div>`:'')+cs.map((c,i)=>{const n=days(c[4]);return `<div class="pi${i?'':' on'}">${ico('cert')}<span class="t">${c[0]}<small>${c[5]} · ${c[6]}</small></span><span class="days ${st(n)}">${n} d</span></div>`}).join('')
+ +(as.length?'<div class="pg">Acciones</div>':'')+as.map(a=>`<div class="pi">${ico(a[0])}<span class="t">${a[1]}</span><span class="k">${a[2].map(k=>`<kbd>${k}</kbd>`).join('')}</span></div>`).join('')}
+function pal(on){document.getElementById('pal').classList.toggle('on',!!on);if(on){drawPal();setTimeout(()=>q.focus())}}
+function theme(){const h=document.documentElement;h.dataset.theme=h.dataset.theme==='light'?'':'light'}
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();pal(1)}if(e.key==='Escape')pal(0)});
+const P=new URLSearchParams(location.search);
+if(P.has('light'))theme();
+if(P.has('k')){pal(1);q.value=P.get('k');drawPal()}
+</script>
+</body>
+</html>

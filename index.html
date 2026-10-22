@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>CertScope — certificados TLS y dominios</title>
+<style>
+/* Guía visual Scope: neutra, bordes de 1 px; el color solo dice el estado (verde OK, ámbar en aviso, rojo vencido). */
+:root{
+  --bg:#0d0e10; --side:#111214; --panel:#16171a; --raise:#1c1d21; --hover:#1f2024; --sel:#25262b;
+  --line:#232428; --line2:#2e3035;
+  --tx:#e8e8ea; --tx2:#a0a1a8; --tx3:#6c6d75;
+  --ok:#4cb782; --warn:#e8a93a; --bad:#eb5757;
+  --okbg:#4cb7821a; --warnbg:#e8a93a1c; --badbg:#eb57571c;
+  --f:"Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  --m:"JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+  color-scheme:dark;
+}
+html[data-theme="light"]{
+  --bg:#fbfbfb; --side:#f4f4f5; --panel:#ffffff; --raise:#ffffff; --hover:#efeff1; --sel:#e7e7ea;
+  --line:#e4e4e7; --line2:#d4d4d8;
+  --tx:#18181b; --tx2:#52525b; --tx3:#8a8a93;
+  --ok:#1f8f5a; --warn:#b4760a; --bad:#cf3a3a;
+  --okbg:#1f8f5a14; --warnbg:#b4760a17; --badbg:#cf3a3a14;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:13px/1.45 var(--f);font-feature-settings:"cv11","ss01","tnum";-webkit-font-smoothing:antialiased;overflow:hidden;
+  display:grid;grid-template-rows:40px minmax(0,1fr) 24px;grid-template-columns:224px minmax(0,1fr) 288px;grid-template-areas:"top top top" "tree main insp" "bar bar bar"}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+svg.i{width:14px;height:14px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.mono{font-family:var(--m);font-size:12px}
+.mut{color:var(--tx3)}
+kbd{font:500 10.5px/1 var(--m);color:var(--tx3);border:1px solid var(--line2);border-radius:4px;padding:2px 4px;background:var(--panel);min-width:16px;text-align:center;display:inline-block}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;border:3px solid var(--bg)}
+:focus-visible{outline:1.5px solid var(--tx2);outline-offset:1px}
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;display:inline-block}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}.dot.none{background:var(--line2)}
+.c-bad{color:var(--bad)!important}.c-warn{color:var(--warn)!important}.c-ok{color:var(--tx2)}
+.t-ok{color:var(--ok)!important}
+
+/* barra superior */
+#top{grid-area:top;display:flex;align-items:center;gap:8px;padding:0 10px 0 14px;border-bottom:1px solid var(--line);background:var(--side);min-width:0}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:-.1px;width:200px;flex:0 0 auto}
+.brand svg{width:16px;height:16px}
+#ver{color:var(--tx3);font-weight:400;border-radius:4px;padding:0 3px}
+#ver:hover{color:var(--tx);background:var(--hover)}
+.crumb{display:flex;align-items:center;gap:6px;color:var(--tx2);min-width:0;white-space:nowrap;overflow:hidden}
+.crumb b{color:var(--tx);font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.crumb svg{color:var(--tx3);width:12px;height:12px}
+.sp{flex:1}
+.cmdk{display:flex;align-items:center;gap:8px;width:340px;min-width:0;flex:0 1 340px;height:26px;padding:0 6px 0 9px;border:1px solid var(--line2);border-radius:6px;color:var(--tx3);background:var(--bg)}
+.cmdk:hover{border-color:var(--tx3)}
+.cmdk span{flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border:1px solid var(--line2);border-radius:6px;color:var(--tx2);font-weight:500;white-space:nowrap;flex:0 0 auto}
+.b:hover{background:var(--hover);color:var(--tx)}
+.b:disabled{opacity:.45;cursor:default}
+.b.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.b.pri:hover{opacity:.88;background:var(--tx);color:var(--bg)}
+.b.pri kbd{background:transparent;color:inherit;border-color:currentColor;opacity:.55}
+.b.ic{width:26px;padding:0;justify-content:center}
+.b.sm{height:22px;padding:0 7px;font-size:12px}
+.b.danger:hover,.b.danger.armed{color:var(--bad);border-color:var(--bad);background:var(--badbg)}
+.seg{display:flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden;height:26px;flex:0 0 auto}
+.seg button{padding:0 8px;color:var(--tx3);font-weight:500;font-size:12px}
+.seg button:hover{color:var(--tx)}
+.seg button.on{background:var(--sel);color:var(--tx)}
+
+/* menú de exportar */
+.menu{position:fixed;display:none;min-width:290px;background:var(--raise);border:1px solid var(--line2);border-radius:8px;padding:4px;z-index:65;box-shadow:0 18px 50px -18px #000a}
+.menu.on{display:block}
+.menu button{display:flex;width:100%;gap:10px;align-items:flex-start;padding:7px 9px;border-radius:5px;color:var(--tx);text-align:left}
+.menu button svg{margin-top:2px;color:var(--tx3)}
+.menu button:hover{background:var(--hover)}
+.menu small{display:block;color:var(--tx3);font-size:11.5px}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+
+/* árbol */
+#tree{grid-area:tree;background:var(--side);border-right:1px solid var(--line);overflow:auto;padding:8px 6px;min-height:0}
+#tree .seg{margin:0 4px 10px;height:24px}
+#tree .seg button{flex:1}
+.th{display:flex;align-items:center;justify-content:space-between;padding:12px 8px 4px;color:var(--tx3);font-size:11px;font-weight:500;letter-spacing:.3px;text-transform:uppercase}
+.mini{width:18px;height:18px;border-radius:4px;color:var(--tx3);display:flex;align-items:center;justify-content:center}
+.mini:hover{background:var(--hover);color:var(--tx)}
+.mini svg{width:12px;height:12px}
+.tn{display:flex;align-items:center;gap:6px;height:26px;padding:0 8px;border-radius:5px;color:var(--tx2);cursor:pointer;white-space:nowrap;user-select:none}
+.tn:hover{background:var(--hover)}
+.tn.on{background:var(--sel);color:var(--tx)}
+.tn .fold{width:14px;height:14px;display:flex;align-items:center;justify-content:center;color:var(--tx3);margin-left:-4px;flex:0 0 auto}
+.tn .fold svg{width:10px;height:10px}
+.tn .lbl{flex:1;overflow:hidden;text-overflow:ellipsis}
+.tn .n{font:11px var(--m);color:var(--tx3)}
+.tn.l2{padding-left:24px}
+.dots{display:flex;gap:3px}
+.empty-s{padding:4px 8px;color:var(--tx3);font-size:12px}
+
+/* zona central */
+#main{grid-area:main;display:grid;grid-template-rows:auto auto auto minmax(0,1fr) auto;min-width:0;min-height:0}
+.head{display:flex;align-items:flex-end;gap:16px;padding:14px 18px 0;min-width:0}
+.head .grow{min-width:0}
+.head h1{margin:0;font-size:15px;font-weight:600;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head p{margin:2px 0 0;color:var(--tx3);font-size:12px}
+.stats{display:flex;gap:4px;margin-left:auto;padding-bottom:0;flex:0 0 auto}
+.stat{display:flex;align-items:center;gap:6px;color:var(--tx2);padding:3px 8px;border-radius:5px;border:1px solid transparent}
+.stat:hover{background:var(--hover)}
+.stat.on{border-color:var(--line2);background:var(--sel);color:var(--tx)}
+.stat.off{opacity:.5}
+.stat b{font:500 13px var(--m);color:var(--tx)}
+#fresh:empty{display:none}
+#fresh{margin:12px 18px 0;padding:8px 10px 8px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--panel);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#fresh .ft{display:flex;align-items:center;gap:8px;color:var(--tx2)}
+#fresh .ft b{color:var(--tx);font-weight:500}
+#fresh .items{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+#fresh .items button{display:flex;align-items:center;gap:6px;height:22px;padding:0 8px;border:1px solid var(--line2);border-radius:5px;color:var(--tx2);font-size:12px}
+#fresh .items button:hover{background:var(--hover);color:var(--tx)}
+.tabs{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--line);align-items:flex-end;min-width:0}
+.tabs>button{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;color:var(--tx3);font-weight:500;border-bottom:1.5px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs>button:hover{color:var(--tx)}
+.tabs>button.on{color:var(--tx);border-color:var(--tx)}
+.tabs .n{font:11px var(--m);color:var(--tx3)}
+.tabs .tools{margin-left:auto;display:flex;gap:6px;align-items:center;padding-bottom:5px}
+.fwrap{display:flex;align-items:center;gap:6px;height:24px;width:220px;padding:0 4px 0 8px;border:1px solid var(--line2);border-radius:6px;color:var(--tx3)}
+.fwrap:focus-within{border-color:var(--tx3)}
+.fwrap input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:12px;color:var(--tx)}
+.fwrap input::placeholder{color:var(--tx3)}
+.wrap{overflow:auto;min-height:0}
+table.grid{width:100%;border-collapse:collapse;white-space:nowrap}
+.grid thead th{position:sticky;top:0;background:var(--bg);text-align:left;font-weight:500;font-size:11.5px;color:var(--tx3);padding:7px 10px;border-bottom:1px solid var(--line);z-index:1;user-select:none}
+.grid thead th[data-sort]{cursor:pointer}
+.grid thead th[data-sort]:hover,.grid thead th.sorted{color:var(--tx)}
+.grid thead th .ar{font-family:var(--m);margin-left:4px}
+.grid th.r,.grid td.r{text-align:right}
+.grid tbody td{padding:0 10px;height:30px;border-bottom:1px solid var(--line);color:var(--tx2)}
+.grid tbody tr{cursor:default}
+.grid tbody tr:hover td{background:var(--hover)}
+.grid tbody tr.on td{background:var(--sel)}
+.grid tbody tr.on td:first-child{box-shadow:inset 2px 0 var(--tx)}
+.grid td.w18,.grid th.w18{width:18px;padding-right:0}
+td.cn{color:var(--tx)!important;font-weight:500;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+td.cn .san{color:var(--tx3);font-weight:400;margin-left:6px;font-size:11.5px}
+td.tr{max-width:190px;overflow:hidden;text-overflow:ellipsis}
+.new{font:600 9.5px var(--m);letter-spacing:.4px;border:1px solid var(--line2);color:var(--tx);border-radius:4px;padding:1px 4px;margin-left:6px;vertical-align:1px}
+.days{font:500 12px var(--m)}
+.life{display:inline-block;width:36px;height:4px;border-radius:2px;background:var(--line2);vertical-align:middle;margin-right:8px;overflow:hidden}
+.life i{display:block;height:100%;background:var(--tx3)}
+.life.warn i{background:var(--warn)}.life.bad i{background:var(--bad)}
+td.auto svg{width:13px;height:13px;vertical-align:-2px}
+.empty{padding:60px 20px;text-align:center;color:var(--tx3)}
+.empty h2{margin:0 0 6px;font-size:14px;color:var(--tx);font-weight:600}
+.empty p{margin:0 auto 16px;max-width:460px;line-height:1.55}
+.empty .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+/* calendario */
+.cal{padding:6px 18px 24px;max-width:980px}
+.cal .bar{display:flex;align-items:center;gap:10px;padding:10px 0 4px;color:var(--tx3);font-size:12px}
+.cal h4{margin:18px 0 4px;font-size:11px;font-weight:500;color:var(--tx3);letter-spacing:.3px;text-transform:uppercase}
+.crow{display:grid;grid-template-columns:14px 92px minmax(0,1.4fr) 92px minmax(0,1fr) 64px;gap:10px;align-items:center;height:30px;padding:0 8px;border-bottom:1px solid var(--line);color:var(--tx2);cursor:pointer;white-space:nowrap}
+.crow:hover{background:var(--hover)}
+.crow.on{background:var(--sel)}
+.crow span{overflow:hidden;text-overflow:ellipsis}
+.crow .nm{color:var(--tx);font-weight:500}
+.crow .days{text-align:right}
+
+/* registro de cambios */
+#log{border-top:1px solid var(--line);background:var(--side);height:160px;display:grid;grid-template-rows:30px minmax(0,1fr)}
+#log.off{height:31px}
+#log.off .wrap{display:none}
+#log .lh{display:flex;align-items:center;gap:14px;padding:0 14px;border-bottom:1px solid var(--line);color:var(--tx3);font-size:12px}
+#log .lh b{color:var(--tx);font-weight:500}
+#log .lh button{display:flex;align-items:center;gap:6px;color:var(--tx3)}
+#log .lh button:hover{color:var(--tx)}
+table.lg{width:100%;border-collapse:collapse;white-space:nowrap}
+.lg td{height:24px;padding:0 10px;font-size:12px;border-bottom:1px solid var(--line);color:var(--tx3);overflow:hidden;text-overflow:ellipsis;max-width:420px}
+.lg td.lt{font:11.5px var(--m);width:130px}
+.lg td.act{color:var(--tx);width:190px}
+.lg td.act .dot{margin-right:6px;vertical-align:1px}
+.lg td.obj{color:var(--tx2);width:260px}
+.vlog .lg td{height:28px}
+
+/* inspector */
+#insp{grid-area:insp;border-left:1px solid var(--line);background:var(--panel);overflow:auto;min-height:0}
+.ih{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:2px 7px 2px 6px;border-radius:5px;background:var(--hover);color:var(--tx2)}
+.st.warn{background:var(--warnbg);color:var(--warn)}.st.bad{background:var(--badbg);color:var(--bad)}.st.ok{background:var(--okbg);color:var(--ok)}
+.ih h2{margin:8px 0 2px;font-size:14px;font-weight:600;letter-spacing:-.2px;word-break:break-all}
+.ih p{margin:0;color:var(--tx3);font-size:12px}
+.tl{margin:12px 0 2px;height:4px;border-radius:2px;background:var(--line2);position:relative}
+.tl i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--tx3)}
+.tl.warn i{background:var(--warn)}.tl.bad i{background:var(--bad)}
+.tl u{position:absolute;top:-3px;width:1px;height:10px;background:var(--tx2)}
+.tll{display:flex;justify-content:space-between;color:var(--tx3);font:11px var(--m);margin-top:6px}
+.sec{padding:12px 16px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 8px;font-size:11px;font-weight:500;color:var(--tx3);letter-spacing:.3px;text-transform:uppercase}
+dl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:7px 10px;margin:0}
+dt{color:var(--tx3)}
+dd{margin:0;color:var(--tx);min-width:0;overflow-wrap:anywhere}
+dd.mono{font-size:11.5px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font:11.5px var(--m);border:1px solid var(--line2);border-radius:4px;padding:1px 6px;color:var(--tx2);overflow-wrap:anywhere}
+.acts{display:flex;flex-direction:column;gap:2px;padding:10px 8px}
+.acts button{display:flex;align-items:center;gap:8px;height:28px;padding:0 8px;border-radius:5px;color:var(--tx2);text-align:left}
+.acts button:hover{background:var(--hover);color:var(--tx)}
+.acts button span{flex:1}
+.note{color:var(--tx2);line-height:1.5;white-space:pre-wrap}
+.alert{margin-top:10px;padding:7px 9px;border-radius:6px;background:var(--warnbg);color:var(--warn);font-size:12px;line-height:1.45}
+.iempty{padding:40px 22px;color:var(--tx3);text-align:center;line-height:1.55}
+.iempty svg{width:22px;height:22px;margin-bottom:8px}
+
+/* barra de estado */
+#bar{grid-area:bar;display:flex;align-items:center;gap:16px;padding:0 12px;border-top:1px solid var(--line);background:var(--side);color:var(--tx3);font-size:11.5px;white-space:nowrap;overflow:hidden}
+#bar .k{display:flex;align-items:center;gap:5px}
+#savest{display:flex;align-items:center;gap:6px;color:var(--tx3)}
+#savest:hover{color:var(--tx)}
+#savest.bad{color:var(--bad);font-weight:600}
+
+/* paleta Ctrl+K */
+#pal{position:fixed;inset:0;background:#0000007a;display:none;align-items:flex-start;justify-content:center;padding:110px 16px 0;z-index:80}
+html[data-theme="light"] #pal{background:#18181b33}
+#pal.on{display:flex}
+.pbox{width:620px;max-width:100%;background:var(--raise);border:1px solid var(--line2);border-radius:10px;box-shadow:0 24px 70px -20px #000c;overflow:hidden}
+.pin{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;border-bottom:1px solid var(--line)}
+.pin input{flex:1;min-width:0;background:none;border:0;outline:none;font-size:14.5px}
+.pin input::placeholder{color:var(--tx3)}
+.pin svg{color:var(--tx3);width:16px;height:16px}
+.plist{max-height:380px;overflow:auto;padding:6px}
+.pg{padding:8px 10px 4px;color:var(--tx3);font-size:11px;font-weight:500}
+.pi{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:6px;color:var(--tx2);cursor:pointer}
+.pi.on{background:var(--sel);color:var(--tx)}
+.pi .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi .t small{color:var(--tx3);margin-left:8px;font-size:12px}
+.pi .k{display:flex;gap:3px}
+.pnone{padding:18px 12px;color:var(--tx3)}
+.pf{display:flex;align-items:center;gap:14px;padding:0 12px;height:34px;border-top:1px solid var(--line);color:var(--tx3);font-size:11.5px}
+.pf span{display:flex;align-items:center;gap:5px}
+
+/* ventanas */
+#veil{position:fixed;inset:0;background:#0000007a;display:none;align-items:flex-start;justify-content:center;padding:7vh 16px 24px;z-index:70;overflow:auto}
+html[data-theme="light"] #veil{background:#18181b33}
+#veil.on{display:flex}
+.modal{width:560px;max-width:100%;background:var(--raise);border:1px solid var(--line2);border-radius:10px;box-shadow:0 24px 70px -20px #000c}
+.modal.wide{width:780px}
+.modal h3{margin:0;padding:13px 18px;font-size:14px;font-weight:600;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;min-width:0;word-break:break-all}
+.modal h3 .tag{font:500 11px var(--f);color:var(--tx3);border:1px solid var(--line2);border-radius:4px;padding:1px 6px;word-break:normal}
+.modal .body{padding:16px 18px;display:grid;gap:12px}
+.modal .foot{display:flex;gap:8px;align-items:center;padding:12px 18px;border-top:1px solid var(--line)}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fld label{display:block;font-size:11.5px;color:var(--tx3);margin-bottom:4px}
+.in{width:100%;height:30px;background:var(--bg);border:1px solid var(--line2);border-radius:6px;padding:0 9px;outline:none}
+textarea.in{height:auto;padding:7px 9px;resize:vertical;font-family:var(--m);font-size:12px;line-height:1.5}
+textarea.in.tx{font-family:var(--f);font-size:13px}
+.in:focus{border-color:var(--tx3)}
+.in.bad{border-color:var(--bad)}
+input.num{width:70px;display:inline-block;height:26px}
+.hint{color:var(--tx3);font-size:12px;line-height:1.55}
+.hint b{color:var(--tx2);font-weight:500}
+.chk{display:flex;gap:8px;align-items:center;color:var(--tx2);cursor:pointer}
+input[type=checkbox],input[type=radio]{accent-color:var(--tx);margin:0}
+.ind{padding-left:22px}
+.pres{display:grid;gap:4px}
+.pres:empty{display:none}
+.prow{display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid var(--line);border-radius:6px;color:var(--tx2);font-size:12px;min-width:0}
+.prow b{color:var(--tx);font-weight:500}
+.prow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .mono{margin-left:auto;flex:0 0 auto}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;align-items:center}
+.keys span:nth-child(odd){display:flex;gap:3px;justify-content:flex-end}
+.nv h4{margin:0 0 4px;font-size:13px;display:flex;gap:10px;align-items:baseline}
+.nv h4 span{color:var(--tx3);font-weight:400;font-size:12px}
+.nv ul{margin:0;padding-left:18px;color:var(--tx2);line-height:1.55}
+#toast{position:fixed;bottom:36px;left:50%;transform:translate(-50%,8px);opacity:0;pointer-events:none;background:var(--raise);border:1px solid var(--line2);border-radius:8px;padding:8px 12px;z-index:90;transition:.15s;box-shadow:0 12px 40px -16px #000a;max-width:calc(100% - 32px)}
+#toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#toast .act{margin-left:10px;text-decoration:underline;color:var(--tx)}
+
+/* pantallas estrechas: primero se va el inspector, luego el árbol */
+@media (max-width:1180px){body{grid-template-columns:210px minmax(0,1fr) 0}#insp{display:none}.brand{width:auto}}
+@media (max-width:820px){
+  body{grid-template-columns:0 minmax(0,1fr) 0}#tree{display:none}
+  .crumb,#pemBtn span,#expBtn span,#addBtn span,#addBtn kbd,#pemBtn kbd,#bar .k,#avinfo,.stats{display:none}
+  .cmdk{flex:1 1 auto}.fwrap{width:150px}.g2,.g3{grid-template-columns:1fr}
+}
+
+/* PDF */
+#print{display:none}
+@media print{
+  html,body{height:auto;overflow:visible;background:#fff;color:#000;display:block}
+  body>*:not(#print){display:none!important}
+  #print{display:block;font:9.5pt/1.4 "Segoe UI",system-ui,sans-serif;color:#000}
+  #print h1{font-size:16pt;margin:0 0 1mm}
+  #print h2{font-size:11pt;margin:7mm 0 2mm}
+  #print .meta{color:#555;font-size:8.5pt}
+  #print table{width:100%;border-collapse:collapse;font-size:8.3pt}
+  #print th,#print td{border-bottom:.3mm solid #ddd;padding:1.2mm 1.5mm;text-align:left;vertical-align:top}
+  #print th{color:#555;font-weight:600}
+  #print .num{text-align:right;white-space:nowrap}
+  #print .nw{white-space:nowrap}
+  #print .s-bad{color:#c62828;font-weight:600}
+  #print .s-warn{color:#9a5b00;font-weight:600}
+  #print .kp{display:flex;gap:4mm;margin:4mm 0}
+  #print .kp div{border:.3mm solid #ccc;border-radius:2mm;padding:2mm 4mm;font-size:8.5pt;color:#555}
+  #print .kp b{display:block;font-size:14pt;color:#000}
+  @page{size:A4 landscape;margin:12mm}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 16 16"><rect x="1.5" y="1.5" width="13" height="13" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="chev" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+  <symbol id="down" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+  <symbol id="search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></symbol>
+  <symbol id="plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="paste" viewBox="0 0 16 16"><rect x="3.5" y="3" width="9" height="11" rx="1.5"/><path d="M6 3V2h4v1M6 7h4M6 10h3"/></symbol>
+  <symbol id="export" viewBox="0 0 16 16"><path d="M8 10V2M5 5l3-3 3 3M3 10v3h10v-3"/></symbol>
+  <symbol id="upload" viewBox="0 0 16 16"><path d="M8 2v8M5 7l3 3 3-3M3 10v3h10v-3"/></symbol>
+  <symbol id="cal" viewBox="0 0 16 16"><rect x="2.5" y="3.5" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"/></symbol>
+  <symbol id="moon" viewBox="0 0 16 16"><path d="M13 9.5A5.5 5.5 0 016.5 3a5.5 5.5 0 106.5 6.5z"/></symbol>
+  <symbol id="sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></symbol>
+  <symbol id="gear" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1"/></symbol>
+  <symbol id="layers" viewBox="0 0 16 16"><path d="M8 2l6 3-6 3-6-3 6-3zM2 8l6 3 6-3M2 11l6 3 6-3"/></symbol>
+  <symbol id="server" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="4.5" rx="1"/><rect x="2.5" y="9" width="11" height="4.5" rx="1"/><path d="M5 4.75h.01M5 11.25h.01"/></symbol>
+  <symbol id="globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.8"/><path d="M2.2 8h11.6M8 2.2c1.7 1.6 2.4 3.6 2.4 5.8S9.7 12.2 8 13.8C6.3 12.2 5.6 10.2 5.6 8S6.3 3.8 8 2.2z"/></symbol>
+  <symbol id="cert" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="8" rx="1.2"/><path d="M5 5.5h6M5 7.5h3.5"/><circle cx="10.8" cy="11.5" r="1.8"/><path d="M9.8 13l-.4 1.8 1.4-.7 1.4.7-.4-1.8"/></symbol>
+  <symbol id="refresh" viewBox="0 0 16 16"><path d="M13 3v3.5H9.5M3 13V9.5h3.5"/><path d="M12.6 6.5A5 5 0 004.2 4.8M3.4 9.5a5 5 0 008.4 1.7"/></symbol>
+  <symbol id="check" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></symbol>
+  <symbol id="dash" viewBox="0 0 16 16"><path d="M5 8h6"/></symbol>
+  <symbol id="edit" viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3l7.5-7.5z"/></symbol>
+  <symbol id="copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.3"/><path d="M10.5 5.5v-2a1 1 0 00-1-1h-6a1 1 0 00-1 1v6a1 1 0 001 1h2"/></symbol>
+  <symbol id="file" viewBox="0 0 16 16"><path d="M9 2H4.5A1.5 1.5 0 003 3.5v9A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V6L9 2z"/><path d="M9 2v4h4"/></symbol>
+  <symbol id="table" viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="10" rx="1.2"/><path d="M2.5 6.5h11M2.5 9.75h11M6.5 3v10"/></symbol>
+  <symbol id="save" viewBox="0 0 16 16"><path d="M3 2.5h8l2.5 2.5v8.5H3z"/><path d="M5.5 2.5v3h4.5v-3M5.5 13.5V9.5h5v4"/></symbol>
+  <symbol id="link" viewBox="0 0 16 16"><path d="M6.8 9.2a2.6 2.6 0 003.7 0l2.2-2.2a2.6 2.6 0 00-3.7-3.7l-.8.8M9.2 6.8a2.6 2.6 0 00-3.7 0L3.3 9a2.6 2.6 0 003.7 3.7l.8-.8"/></symbol>
+  <symbol id="arrow" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4"/></symbol>
+  <symbol id="filter" viewBox="0 0 16 16"><path d="M2.5 3.5h11L9.5 8.5v4l-3 1.5v-5.5z"/></symbol>
+  <symbol id="bell" viewBox="0 0 16 16"><path d="M4 11V7a4 4 0 018 0v4l1 1.5H3zM6.5 14h3"/></symbol>
+  <symbol id="kbd" viewBox="0 0 16 16"><rect x="1.5" y="4" width="13" height="8" rx="1.5"/><path d="M4 6.5h.01M6.5 6.5h.01M9 6.5h.01M11.5 6.5h.01M5 9.5h6"/></symbol>
+  <symbol id="info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.8"/><path d="M8 7.2v3.6M8 5h.01"/></symbol>
+  <symbol id="trash" viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"/></symbol>
+</svg>
+
+<header id="top">
+  <div class="brand"><svg><use href="#logo"/></svg>CertScope <button id="ver" title="Ver novedades"></button></div>
+  <div class="crumb" id="crumb"></div>
+  <div class="sp"></div>
+  <button class="cmdk" id="cmdk" title="Paleta de comandos (Ctrl+K)"><svg class="i"><use href="#search"/></svg><span>Buscar o ejecutar una acción…</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
+  <div class="sp"></div>
+  <button class="b" id="pemBtn" title="Importar un certificado pegando su PEM"><svg class="i"><use href="#paste"/></svg><span>Pegar PEM</span><kbd>I</kbd></button>
+  <button class="b" id="expBtn"><svg class="i"><use href="#export"/></svg><span>Exportar</span><svg class="i"><use href="#down"/></svg></button>
+  <button class="b pri" id="addBtn" title="Añadir certificado"><svg class="i"><use href="#plus"/></svg><span>Añadir</span><kbd>N</kbd></button>
+  <div class="seg" id="lang" data-notr><button data-l="es" title="Español">ES</button><button data-l="en" title="English">EN</button></div>
+  <button class="b ic" id="cfgBtn" title="Ajustes"><svg class="i"><use href="#gear"/></svg></button>
+  <button class="b ic" id="theme" title="Cambiar tema"><svg class="i"><use href="#moon"/></svg></button>
+</header>
+<div class="menu" id="expMenu">
+  <button data-exp="pdf"><svg class="i"><use href="#file"/></svg><span>Informe (PDF)<small>Estado, vencimientos e inventario completo</small></span></button>
+  <button data-exp="csv"><svg class="i"><use href="#table"/></svg><span>Excel (CSV)<small>Una fila por certificado o dominio</small></span></button>
+  <button data-exp="ics"><svg class="i"><use href="#cal"/></svg><span>Calendario de vencimientos (.ics)<small>Avisos en Outlook o Google Calendar</small></span></button>
+  <hr>
+  <button data-exp="json"><svg class="i"><use href="#save"/></svg><span>Copia de seguridad (JSON)<small>Para volver a importarla aquí</small></span></button>
+  <button data-exp="imp"><svg class="i"><use href="#upload"/></svg><span>Importar copia (JSON)<small>Sustituye los datos por los de la copia</small></span></button>
+  <button data-exp="file"><svg class="i"><use href="#link"/></svg><span>Guardar en un archivo…<small>Se reescribe solo cada vez que cambias algo</small></span></button>
+</div>
+
+<nav id="tree">
+  <div class="seg" id="grp"><button data-grp="env">Entorno</button><button data-grp="cli">Cliente</button><button data-grp="dom">Dominio</button></div>
+  <div id="tg"></div>
+  <div class="th"><span>Dominios registrados</span><button class="mini" id="addDom" title="Añadir dominio (D)"><svg class="i"><use href="#plus"/></svg></button></div>
+  <div id="td"></div>
+</nav>
+
+<main id="main">
+  <div class="head"><div class="grow"><h1 id="h1"></h1><p id="hsub"></p></div><div class="stats" id="stats"></div></div>
+  <div id="fresh"></div>
+  <div class="tabs" id="tabs">
+    <button data-tab="cert"><svg class="i"><use href="#cert"/></svg>Certificados <span class="n" id="nC"></span></button>
+    <button data-tab="dom"><svg class="i"><use href="#globe"/></svg>Dominios <span class="n" id="nD"></span></button>
+    <button data-tab="cal"><svg class="i"><use href="#cal"/></svg>Calendario</button>
+    <button data-tab="log"><svg class="i"><use href="#file"/></svg>Registro</button>
+    <div class="tools"><label class="fwrap"><svg class="i"><use href="#filter"/></svg><input id="filter" placeholder="Filtrar…" autocomplete="off" spellcheck="false"><kbd>/</kbd></label></div>
+  </div>
+  <div class="wrap" id="view"></div>
+  <section id="log"><div class="lh"><b>Registro de cambios</b><span id="logN"></span><span class="sp"></span><button id="logT"><span id="logTl">Ocultar</span><kbd>L</kbd></button></div><div class="wrap" id="logW"></div></section>
+</main>
+
+<aside id="insp"></aside>
+
+<footer id="bar">
+  <button id="savest" title="Dónde se guardan los datos"></button>
+  <span id="counts"></span>
+  <span id="avinfo"></span>
+  <span class="sp"></span>
+  <span class="k"><kbd>J</kbd><kbd>K</kbd> moverse</span>
+  <span class="k"><kbd>↵</kbd> editar</span>
+  <span class="k"><kbd>/</kbd> filtrar</span>
+  <span class="k"><kbd>Ctrl</kbd><kbd>K</kbd> paleta</span>
+  <span class="k"><kbd>?</kbd> atajos</span>
+</footer>
+
+<div id="pal"><div class="pbox">
+  <div class="pin"><svg class="i"><use href="#search"/></svg><input id="q" placeholder="Buscar certificados, dominios, servidores o acciones…" autocomplete="off" spellcheck="false"><kbd>Esc</kbd></div>
+  <div class="plist" id="plist"></div>
+  <div class="pf"><span><kbd>↑</kbd><kbd>↓</kbd> elegir</span><span><kbd>↵</kbd> abrir</span><span class="sp"></span><span>CertScope</span></div>
+</div></div>
+<div id="veil"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
+<div id="print"></div>
+<input type="file" id="file" hidden>
+
+<script id="i18n">
+"use strict";
+/* ---------- idioma: espanol / ingles ----------
+   La aplicacion se escribe en espanol. Si el navegador esta en otro idioma (o se elige EN),
+   cada texto fijo de la pagina se cambia por su traduccion al pintarse: textos, avisos (title),
+   marcadores de los campos y el titulo de la pagina. Lo que se pinta desde el codigo ya sale
+   en el idioma elegido con L(es,en). Los datos que escribe el usuario no se tocan. */
+const I18N=(()=>{
+  const LK="certscope.lang";
+  let lang="es";
+  try{const s=localStorage.getItem(LK);lang=s==="en"||s==="es"?s:((navigator.language||"es").toLowerCase().startsWith("es")?"es":"en");}
+  catch(e){lang=(navigator.language||"es").toLowerCase().startsWith("es")?"es":"en";}
+  const D=new Map(Object.entries({
+"CertScope — certificados TLS y dominios": "CertScope — TLS certificates and domains",
+"Ver novedades": "What's new",
+"Paleta de comandos (Ctrl+K)": "Command palette (Ctrl+K)",
+"Buscar o ejecutar una acción…": "Search or run an action…",
+"Importar un certificado pegando su PEM": "Import a certificate by pasting its PEM",
+"Pegar PEM": "Paste PEM",
+"Exportar": "Export",
+"Añadir certificado": "Add certificate",
+"Añadir": "Add",
+"Ajustes": "Settings",
+"Cambiar tema": "Change theme",
+"Informe (PDF)": "Report (PDF)",
+"Estado, vencimientos e inventario completo": "Status, expiry dates and full inventory",
+"Una fila por certificado o dominio": "One row per certificate or domain",
+"Calendario de vencimientos (.ics)": "Expiry calendar (.ics)",
+"Avisos en Outlook o Google Calendar": "Reminders in Outlook or Google Calendar",
+"Copia de seguridad (JSON)": "Backup (JSON)",
+"Para volver a importarla aquí": "To import it here again",
+"Importar copia (JSON)": "Import backup (JSON)",
+"Sustituye los datos por los de la copia": "Replaces the data with the backup's",
+"Guardar en un archivo…": "Save to a file…",
+"Se reescribe solo cada vez que cambias algo": "Rewritten automatically every time you change something",
+"Entorno": "Environment",
+"Cliente": "Client",
+"Dominio": "Domain",
+"Dominios registrados": "Registered domains",
+"Añadir dominio (D)": "Add domain (D)",
+"Certificados": "Certificates",
+"Dominios": "Domains",
+"Calendario": "Calendar",
+"Registro": "Log",
+"Filtrar…": "Filter…",
+"Registro de cambios": "Change log",
+"Ocultar": "Hide",
+"Dónde se guardan los datos": "Where the data is saved",
+"moverse": "move",
+"editar": "edit",
+"filtrar": "filter",
+"paleta": "palette",
+"atajos": "shortcuts",
+"Buscar certificados, dominios, servidores o acciones…": "Search certificates, domains, servers or actions…",
+"elegir": "choose",
+"abrir": "open",
+// datos de ejemplo
+"Producción": "Production",
+"Preproducción": "Staging",
+"Laboratorio": "Lab",
+"Interno": "Internal",
+"Sistemas": "IT team",
+"Notas": "Notes",
+"Ayto. Villanueva": "Villanueva Town Hall",
+"Clínica Soler": "Soler Clinic",
+"La última renovación automática falló: revisar la tarea programada de win-acme en srv-rdgw.": "The last automatic renewal failed: check the win-acme scheduled task on srv-rdgw.",
+"Tras instalarlo: Enable-ExchangeCertificate -Services IIS,SMTP y reiniciar IIS.": "After installing it: Enable-ExchangeCertificate -Services IIS,SMTP and restart IIS.",
+"Se instala a mano en el FortiGate y en el perfil de FortiClient.": "Installed by hand on the FortiGate and in the FortiClient profile.",
+"Certificado autofirmado del controlador; se renueva desde la consola de UniFi.": "Self-signed controller certificate; renewed from the UniFi console.",
+"Lo emite la CA interna (AD CS) por autoinscripción.": "Issued by the internal CA (AD CS) through autoenrollment.",
+"Exportado desde la sede electrónica; pedir el nuevo con 30 días de margen.": "Exported from the e-government site; request the new one 30 days ahead.",
+"Renovación manual: la tarjeta asociada caduca este mes.": "Manual renewal: the card on file expires this month."
+}));
+  const P=[];   // patrones (texto con numeros): de momento todo lo variable sale ya traducido con L()
+  const SKIP=new Set(["SCRIPT","STYLE","TEXTAREA","INPUT","CODE"]);
+  function core(s){
+    let r=D.get(s);if(r!=null)return r;
+    for(const [re,f] of P){const m=re.exec(s);if(m){const x=typeof f==="function"?f(...m):s.replace(re,f);if(x!==s)return x;}}
+    // frases hechas de piezas: "Producción · Clínica Soler"
+    for(const sep of [" · "," › "," / "]){
+      if(!s.includes(sep))continue;
+      let any=false;const parts=s.split(sep).map(p=>{const t=p.trim()?core(p.trim()):null;if(t!=null){any=true;return t;}return p;});
+      if(any)return parts.join(sep);
+    }
+    return null;
+  }
+  function tr(s){
+    if(lang==="es"||s==null)return s;
+    s=String(s);const m=/^(\s*)([\s\S]*?)(\s*)$/.exec(s);
+    if(!m[2]||!/[A-Za-zÁÉÍÓÚáéíóúÑñ¿¡]/.test(m[2]))return s;
+    if(m[2].includes("\n"))return m[1]+m[2].split("\n").map(tr).join("\n")+m[3];   // avisos de varias lineas
+    const r=core(m[2]);return r==null?s:m[1]+r+m[3];
+  }
+  const ATTR=["title","placeholder","aria-label"];
+  function doEl(el){
+    if(el.closest&&el.closest("[data-notr]"))return;
+    ATTR.forEach(a=>{const v=el.getAttribute&&el.getAttribute(a);if(v){const t=tr(v);if(t!==v)el.setAttribute(a,t);}});
+  }
+  function doText(n){
+    const p=n.parentNode;if(!p||SKIP.has(p.nodeName)||(p.closest&&p.closest("[data-notr]")))return;
+    const v=n.nodeValue,t=tr(v);if(t!==v)n.nodeValue=t;
+  }
+  function walk(root){
+    if(lang==="es"||!root)return;
+    if(root.nodeType===3){doText(root);return;}
+    if(root.nodeType!==1&&root.nodeType!==9&&root.nodeType!==11)return;
+    if(root.nodeType===1){if(root.nodeName==="SCRIPT"||root.nodeName==="STYLE")return;doEl(root);}
+    const w=document.createTreeWalker(root,5,null);let n;   // 5 = elementos y textos
+    while((n=w.nextNode())){if(n.nodeType===3)doText(n);else doEl(n);}
+  }
+  let mo=null;
+  function start(){
+    if(lang==="es"||mo)return;
+    document.documentElement.lang="en";
+    walk(document.body);document.title=tr(document.title);
+    mo=new MutationObserver(list=>{for(const r of list){
+      if(r.type==="childList")r.addedNodes.forEach(walk);
+      else if(r.type==="characterData")doText(r.target);
+      else if(r.type==="attributes")doEl(r.target);}});
+    mo.observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:ATTR});
+  }
+  // ventanas del navegador
+  const _c=window.confirm.bind(window),_a=window.alert.bind(window);
+  window.confirm=m=>_c(trLines(m));window.alert=m=>_a(trLines(m));
+  function trLines(m){return String(m==null?"":m).split("\n").map(tr).join("\n");}
+  // datos de ejemplo: en ingles para quien entra en ingles (solo los textos que estan en el diccionario)
+  function data(o){
+    if(lang==="es")return o;
+    if(typeof o==="string")return tr(o);
+    if(Array.isArray(o))return o.map(data);
+    if(o&&typeof o==="object"){Object.keys(o).forEach(k=>{if(!/^(id|cn|san|desde|hasta|serie|huella|clave|t|k|o|auto|emisor|servidor|servicio|nombre|registrador)$/.test(k))o[k]=data(o[k]);});}
+    return o;
+  }
+  function setLang(l){try{localStorage.setItem(LK,l);}catch(e){}location.reload();}
+  return {get lang(){return lang;},tr,start,data,setLang};
+})();
+const T=I18N.tr;
+I18N.start();
+</script>
+
+<script id="app">
+"use strict";
+const KEY="certscope.v1",VERSION="1.0";
+const L=(es,en)=>I18N.lang==="en"?en:es;
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const str=x=>x==null?"":String(x).trim();
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ico=id=>`<svg class="i"><use href="#${id}"/></svg>`;
+const kb=(...k)=>k.map(x=>`<kbd>${x}</kbd>`).join("");
+const nid=p=>(p||"x")+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-3);
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+
+/* ---------- fechas (dias naturales, sin horas) ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const isoOf=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const todayIso=()=>isoOf(new Date());
+const isoOk=s=>{if(typeof s!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(s))return "";const d=new Date(s+"T00:00:00Z");return !isNaN(d)&&d.toISOString().slice(0,10)===s?s:"";};
+const dnum=iso=>Date.UTC(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10))/864e5;
+const dd=(a,b)=>Math.round(dnum(b)-dnum(a));
+const addD=(iso,n)=>new Date((dnum(iso)+n)*864e5).toISOString().slice(0,10);
+const rd=n=>addD(todayIso(),n);
+const days=iso=>dd(todayIso(),iso);
+const fdate=iso=>!iso?"":L(iso.slice(8,10)+"/"+iso.slice(5,7)+"/"+iso.slice(0,4),iso.slice(0,10));
+const fdt=t=>fdate(t.slice(0,10))+t.slice(10);
+const nowStamp=()=>{const d=new Date();return isoOf(d)+" "+pad(d.getHours())+":"+pad(d.getMinutes());};
+const nd=n=>L(n===1?"1 día":n+" días",n===1?"1 day":n+" days");
+const rel=d=>d===0?L("hoy","today"):d>0?L("en ","in ")+nd(d):L("hace "+nd(-d),nd(-d)+" ago");
+
+/* ---------- estados ---------- */
+const LVL={bad:["Vencido","Expired"],warn:["En aviso","Due soon"],ok:["Al día","OK"],none:["Sin fecha","No date"]};
+const lvlN=l=>L(...LVL[l]);
+const KIND={cert:["Certificado","Certificate"],dom:["Dominio","Domain"]};
+const LOGK={add:["Alta","Added"],pem:["Importado de PEM","Imported from PEM"],edit:["Editado","Edited"],del:["Borrado","Deleted"],
+  renew:["Renovado","Renewed"],imp:["Copia importada","Backup imported"],exp:["Venció","Expired"],warn:["Entró en aviso","Became due soon"]};
+const LOGC={renew:"ok",exp:"bad",warn:"warn"};
+const nm=o=>o.cn||o.nombre||"";
+
+/* ---------- periodo de aviso ----------
+   Automatico: un tercio de la vida del certificado, con tope de 30 dias. Si no se sabe cuando se emitio,
+   se estima la vida por el calendario del CA/Browser Forum (SC-081): 200 dias desde el 15/03/2026,
+   100 desde el 15/03/2027 y 47 desde el 15/03/2029. Los dominios avisan siempre 30 dias antes. */
+const CAB=[["2029-03-15",47],["2027-03-15",100],["2026-03-15",200]];
+function vida(c){
+  if(c.desde&&c.hasta&&c.desde<c.hasta)return dd(c.desde,c.hasta);
+  if(!c.hasta)return 0;
+  for(const [cut,n] of CAB)if(addD(c.hasta,-n)>=cut)return n;
+  return 398;
+}
+function avisoDe(o,k,fijo){
+  if(fijo===undefined)fijo=DB.cfg.aviso;
+  if(fijo>0)return fijo;
+  if(k==="dom"||!o.hasta)return 30;
+  return Math.max(1,Math.min(30,Math.round(vida(o)/3)));
+}
+function st(o,k){
+  const av=avisoDe(o,k);
+  if(!o.hasta)return {d:null,av,lvl:"none",v:0};
+  const d=days(o.hasta);
+  return {d,av,lvl:d<0?"bad":d<=av?"warn":"ok",v:k==="cert"?vida(o):365};
+}
+function stTxt(s){
+  if(s.lvl==="none")return lvlN("none");
+  if(s.d<0)return L("Vencido hace "+nd(-s.d),"Expired "+nd(-s.d)+" ago");
+  if(s.d===0)return L("Vence hoy","Expires today");
+  return L("Vence en "+nd(s.d),"Expires in "+nd(s.d));
+}
+function events(){
+  const out=[];
+  DB.certs.forEach(o=>{if(o.hasta){const s=st(o,"cert");out.push({o,k:"cert",iso:o.hasta,d:s.d,av:s.av,lvl:s.lvl});}});
+  DB.doms.forEach(o=>{if(o.hasta){const s=st(o,"dom");out.push({o,k:"dom",iso:o.hasta,d:s.d,av:s.av,lvl:s.lvl});}});
+  return out.sort((a,b)=>a.d-b.d||nm(a.o).localeCompare(nm(b.o)));
+}
+// dominio raiz: www.acme.es -> acme.es; sede.ayto.gob.es -> ayto.gob.es
+const SLD=new Set(["co","com","gob","org","net","edu","ac","nom","gov"]);
+function raiz(h){
+  h=String(h||"").toLowerCase().replace(/^\*\./,"");
+  if(/^[\d.]+$/.test(h)||h.includes(":"))return h;
+  const p=h.split(".").filter(Boolean);if(p.length<=2)return p.join(".");
+  const n=p[p.length-1].length===2&&SLD.has(p[p.length-2])?3:2;
+  return p.slice(-n).join(".");
+}
+
+/* ---------- datos ---------- */
+const t80=(x,n)=>str(x).slice(0,n||200);
+const safeId=(x,p)=>typeof x==="string"&&/^[\w-]{1,64}$/.test(x)?x:nid(p);
+function cleanCert(c){
+  if(!c||typeof c!=="object")return null;
+  const cn=t80(c.cn,253);if(!cn)return null;
+  const san=(Array.isArray(c.san)?c.san:[]).map(s=>t80(s,253)).filter(Boolean).slice(0,100);
+  return {id:safeId(c.id,"c"),cn,san:san.length?san:[cn],emisor:t80(c.emisor),desde:isoOk(c.desde),hasta:isoOk(c.hasta),
+    servidor:t80(c.servidor,120),servicio:t80(c.servicio,120),entorno:t80(c.entorno,80),cliente:t80(c.cliente,120),responsable:t80(c.responsable,120),
+    auto:c.auto===true,clave:t80(c.clave,40),serie:t80(c.serie,200),huella:t80(c.huella,120),notas:str(c.notas).slice(0,4000)};
+}
+function cleanDom(d){
+  if(!d||typeof d!=="object")return null;
+  const nombre=t80(d.nombre,253).toLowerCase();if(!nombre)return null;
+  return {id:safeId(d.id,"d"),nombre,registrador:t80(d.registrador,120),hasta:isoOk(d.hasta),cliente:t80(d.cliente,120),
+    responsable:t80(d.responsable,120),auto:d.auto===true,notas:str(d.notas).slice(0,4000)};
+}
+function cleanLog(x){
+  if(!x||typeof x.t!=="string"||!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(x.t)||!LOGK[x.k])return null;
+  return {t:x.t,k:x.k,o:t80(x.o,253),n:t80(x.n,300)};
+}
+function parseDB(x){
+  if(!x||typeof x!=="object"||!Array.isArray(x.certs))return null;
+  const seen=new Set(),uniq=o=>{if(seen.has(o.id))o.id=nid("x");seen.add(o.id);return o;};
+  const cfg=x.cfg&&typeof x.cfg==="object"?x.cfg:{};
+  return {v:1,app:"certscope",theme:x.theme==="light"?"light":"dark",tab:["cert","dom","cal","log"].includes(x.tab)?x.tab:"cert",
+    grp:["env","cli","dom"].includes(x.grp)?x.grp:"env",logOn:x.logOn!==false,
+    cfg:{aviso:Number.isInteger(cfg.aviso)&&cfg.aviso>0&&cfg.aviso<=365?cfg.aviso:0,empresa:t80(cfg.empresa,120)},
+    certs:x.certs.map(cleanCert).filter(Boolean).map(uniq),
+    doms:(Array.isArray(x.doms)?x.doms:[]).map(cleanDom).filter(Boolean).map(uniq),
+    log:(Array.isArray(x.log)?x.log:[]).map(cleanLog).filter(Boolean).slice(0,500)};
+}
+const hexSerial=()=>[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,"0").toUpperCase()).join(":");
+function seed(){
+  const c=(cn,san,emisor,dl,vd,servidor,servicio,entorno,cliente,responsable,auto,clave,notas)=>({id:nid("c"),cn,san:san||[cn],emisor,
+    desde:rd(dl-vd),hasta:rd(dl),servidor,servicio,entorno,cliente,responsable,auto,clave:clave||"RSA 2048",serie:hexSerial(),huella:"",notas:notas||""});
+  const P="Producción",PRE="Preproducción",LAB="Laboratorio",AC="Acme Logística",TR="Transportes Ruiz",CS="Clínica Soler";
+  const certs=[
+    c("vpn.acme-logistica.es",0,"AlphaSSL CA - SHA256 - G4",-3,199,"fw-edge01","FortiGate SSL-VPN",P,AC,"Pablo Ruiz",false,0,"Se instala a mano en el FortiGate y en el perfil de FortiClient."),
+    c("nas01.transportesruiz.es",0,"Sectigo RSA Domain Validation Secure Server CA",-10,199,"nas01","Synology DSM",P,TR,"Marta Blanco",false),
+    c("rdweb.transportesruiz.es",0,"R10",11,90,"srv-rdgw","RD Gateway (win-acme)",P,TR,"Marta Blanco",true,0,"La última renovación automática falló: revisar la tarea programada de win-acme en srv-rdgw."),
+    c("mail.acme-logistica.es",["mail.acme-logistica.es","autodiscover.acme-logistica.es"],"Sectigo RSA Domain Validation Secure Server CA",17,199,"srv-exch01","Exchange 2019",P,AC,"Pablo Ruiz",false,0,"Tras instalarlo: Enable-ExchangeCertificate -Services IIS,SMTP y reiniciar IIS."),
+    c("citas.clinicasoler.com",0,"E6",39,90,"lb-01","HAProxy",P,CS,"Jordi Soler",true,"EC P-384"),
+    c("www.acme-logistica.es",["www.acme-logistica.es","acme-logistica.es"],"R11",53,90,"srv-web01","nginx",P,AC,"Ana Ortega",true),
+    c("api.clinicasoler.com",0,"E5",82,90,"lb-01","HAProxy",P,CS,"Jordi Soler",true,"EC P-256"),
+    c("*.clinicasoler.com",["*.clinicasoler.com","clinicasoler.com"],"DigiCert Global G2 TLS RSA SHA256 2020 CA1",131,199,"srv-web02","IIS 10",P,CS,"Jordi Soler",false),
+    c("sede.villanueva.es",0,"AC Componentes Informáticos",160,199,"srv-sede","IIS 10",P,"Ayto. Villanueva","Sistemas",false,"RSA 3072","Exportado desde la sede electrónica; pedir el nuevo con 30 días de margen."),
+    c("staging.acme-logistica.es",0,"R11",40,90,"srv-stg01","nginx",PRE,AC,"Ana Ortega",true),
+    c("test-citas.clinicasoler.com",0,"R10",64,90,"k3s-pre","Traefik",PRE,CS,"Jordi Soler",true),
+    c("pve01.lab.local",0,"Proxmox Virtual Environment",287,730,"pve01","Proxmox VE",LAB,"Interno","Sistemas",false),
+    c("unifi.lab.local",0,"unifi.lab.local",8,365,"srv-unifi","UniFi Network",LAB,"Interno","Sistemas",false,0,"Certificado autofirmado del controlador; se renueva desde la consola de UniFi."),
+    c("intranet.lab.local",0,"LAB-CA-01",220,365,"srv-intra","IIS 10",LAB,"Interno","Sistemas",true,0,"Lo emite la CA interna (AD CS) por autoinscripción.")];
+  const d=(nombre,registrador,dl,cliente,responsable,auto,notas)=>({id:nid("d"),nombre,registrador,hasta:rd(dl),cliente,responsable,auto,notas:notas||""});
+  const doms=[d("transportesruiz.es","IONOS",6,TR,"Marta Blanco",false,"Renovación manual: la tarjeta asociada caduca este mes."),
+    d("clinicasoler.com","OVHcloud",24,CS,"Jordi Soler",true),d("villanueva.es","Arsys",90,"Ayto. Villanueva","Sistemas",false),
+    d("acme-logistica.es","DonDominio",193,AC,"Pablo Ruiz",true)];
+  const log=[{t:rd(-1)+" 09:12",k:"pem",o:"test-citas.clinicasoler.com",n:""},{t:rd(-2)+" 17:40",k:"edit",o:"rdweb.transportesruiz.es",n:"Notas"},
+    {t:rd(-6)+" 11:05",k:"add",o:"unifi.lab.local",n:""},{t:rd(-8)+" 10:14",k:"renew",o:"api.clinicasoler.com",n:""}];
+  return I18N.data({certs,doms,log});
+}
+function freshDB(withSeed){
+  const d={v:1,app:"certscope",theme:matchMedia("(prefers-color-scheme: light)").matches?"light":"dark",tab:"cert",grp:"env",logOn:true,
+    cfg:{aviso:0,empresa:""},certs:[],doms:[],log:[]};
+  if(withSeed)Object.assign(d,seed());
+  return d;
+}
+function load(){try{const d=parseDB(JSON.parse(localStorage.getItem(KEY)||"null"));if(d)return d;}catch(e){}return freshDB(true);}
+
+let DB=null,UNDO=[],REDO=[],hData="",hMute=false,BOOTED=false,lsOK=true,fileHandle=null,fileName="",wT=0,FRESH=null;
+const dataKey=()=>JSON.stringify({c:DB.certs,d:DB.doms,l:DB.log,g:DB.cfg});
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(DB));lsOK=true;}catch(e){lsOK=false;}
+  const k=dataKey();
+  if(k!==hData){
+    if(!hMute){UNDO.push(hData);if(UNDO.length>60)UNDO.shift();REDO=[];}
+    hData=k;
+    if(fileHandle){clearTimeout(wT);wT=setTimeout(writeFile,600);}
+    if(BOOTED&&!FRESH)markSeen();
+  }
+  updateSaveUI();
+}
+function histGo(from,to,msg){
+  if(!from.length){toast(msg[0]);return;}
+  to.push(hData);const x=JSON.parse(from.pop());
+  DB.certs=x.c;DB.doms=x.d;DB.log=x.l;DB.cfg=x.g;
+  hMute=true;save();hMute=false;render();toast(msg[1]);
+}
+const undo=()=>histGo(UNDO,REDO,[L("No hay nada que deshacer","Nothing to undo"),L("Deshecho","Undone")]);
+const redo=()=>histGo(REDO,UNDO,[L("No hay nada que rehacer","Nothing to redo"),L("Rehecho","Redone")]);
+function logAdd(k,o,n){DB.log.unshift({t:nowStamp(),k,o:String(o||"").slice(0,253),n:String(n||"").slice(0,300)});if(DB.log.length>500)DB.log.length=500;}
+// registro + lo que ha pasado solo en los ultimos 90 dias (vencimientos y entradas en aviso)
+function logAll(){
+  const out=DB.log.slice(),t=todayIso(),from=rd(-90);
+  events().forEach(e=>{
+    if(e.iso<=t&&e.iso>=from)out.push({t:e.iso,k:"exp",o:nm(e.o),n:L(KIND[e.k][0],KIND[e.k][1]),c:true});
+    const w=addD(e.iso,-e.av);
+    if(w<=t&&w>=from)out.push({t:w,k:"warn",o:nm(e.o),n:L(`aviso ${e.av} días antes`,`${e.av}-day warning`),c:true});
+  });
+  return out.sort((a,b)=>a.t<b.t?1:a.t>b.t?-1:0);
+}
+
+/* ---------- archivo vinculado ---------- */
+function idb(){return new Promise(res=>{try{const q=indexedDB.open("certscope",1);
+  q.onupgradeneeded=()=>q.result.createObjectStore("kv");q.onsuccess=()=>res(q.result);q.onerror=()=>res(null);}catch(e){res(null);}});}
+async function idbPut(k,v){const d=await idb();if(!d)return;try{d.transaction("kv","readwrite").objectStore("kv").put(v,k);}catch(e){}}
+async function idbGet(k){const d=await idb();if(!d)return null;return new Promise(res=>{try{
+  const q=d.transaction("kv","readonly").objectStore("kv").get(k);q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null);}catch(e){res(null);}});}
+async function writeFile(){
+  if(!fileHandle)return false;
+  try{const w=await fileHandle.createWritable();await w.write(JSON.stringify(DB,null,2));await w.close();updateSaveUI();return true;}
+  catch(e){toast(L("No se pudo escribir en el archivo vinculado","Couldn't write to the linked file"));return false;}
+}
+const FTYPES=[{description:"Inventario de CertScope",accept:{"application/json":[".json"]}}];
+async function linkFile(){
+  if(!window.showSaveFilePicker){toast(L("Tu navegador no permite vincular archivo: usa Exportar › Copia de seguridad","Your browser can't link a file: use Export › Backup"));return;}
+  try{
+    fileHandle=await showSaveFilePicker({suggestedName:"certscope-inventario.json",types:FTYPES});
+    fileName=fileHandle.name;await idbPut("handle",fileHandle);await idbPut("name",fileName);
+    await writeFile();toast(L("Guardado automático en ","Auto-saving to ")+fileName);
+  }catch(e){}
+  updateSaveUI();
+}
+async function openFile(){
+  if(!window.showOpenFilePicker){pickFile(".json");return;}
+  try{
+    const [h]=await showOpenFilePicker({types:FTYPES});
+    const d=parseDB(JSON.parse(await (await h.getFile()).text()));if(!d)throw 0;
+    DB=d;fileHandle=h;fileName=h.name;await idbPut("handle",h);await idbPut("name",fileName);
+    setTheme(DB.theme);UNDO=[];REDO=[];hData=dataKey();save();checkFresh();render();toast(L("Cargado desde ","Loaded from ")+fileName);
+  }catch(e){if(e&&e.name==="AbortError")return;toast(L("No se pudo abrir el archivo","Couldn't open the file"));}
+}
+async function restoreHandle(){
+  try{
+    const h=await idbGet("handle");if(!h)return;
+    if(await h.queryPermission({mode:"readwrite"})==="granted"){
+      fileHandle=h;fileName=h.name;
+      try{const d=parseDB(JSON.parse(await (await h.getFile()).text()));if(d){DB=d;setTheme(DB.theme);UNDO=[];REDO=[];hData=dataKey();checkFresh();render();}}catch(e){}
+    }else toast(L("Pulsa abajo a la izquierda para reconectar ","Click bottom left to reconnect ")+(await idbGet("name")||""));
+  }catch(e){}
+  updateSaveUI();
+}
+function updateSaveUI(){
+  const n=$("#savest");
+  if(fileHandle){n.innerHTML=`<span class="dot ok"></span>${esc(fileName)}`;n.className="";n.title=L("Se guarda solo en tu archivo y en el navegador","Saved automatically to your file and the browser");}
+  else if(lsOK){n.innerHTML=`<span class="dot ok"></span>${L("Guardado en el navegador","Saved in the browser")}`;n.className="";n.title=L("Pulsa para guardar también en un archivo","Click to also save to a file");}
+  else{n.innerHTML=`<span class="dot bad"></span>${L("SIN GUARDAR: pulsa para guardar en un archivo","NOT SAVED: click to save to a file")}`;n.className="bad";n.title="";}
+}
+
+/* ---------- avisos ---------- */
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),2600);}
+function toastUndo(m){
+  const t=$("#toast");t.innerHTML=esc(m)+` <button class="act">${L("Deshacer","Undo")}</button>`;
+  t.classList.add("on");clearTimeout(t._t);
+  $(".act",t).onclick=()=>{t.classList.remove("on");undo();};
+  t._t=setTimeout(()=>t.classList.remove("on"),30000);
+}
+
+/* ---------- lo nuevo desde la ultima visita ---------- */
+const SEEN=KEY+".seen";
+const evKey=e=>e.o.id+"|"+e.k+"|"+e.iso+"|"+e.lvl;
+function markSeen(){try{localStorage.setItem(SEEN,JSON.stringify({d:todayIso(),k:events().filter(e=>e.lvl!=="ok").map(evKey)}));}catch(e){}}
+function checkFresh(){
+  let prev=null;try{prev=JSON.parse(localStorage.getItem(SEEN)||"null");}catch(e){}
+  if(!prev||!Array.isArray(prev.k)){FRESH=null;markSeen();return;}
+  const old=new Set(prev.k),nuevos=events().filter(e=>e.lvl!=="ok"&&e.lvl!=="none"&&!old.has(evKey(e)));
+  if(!nuevos.length){FRESH=null;markSeen();return;}
+  FRESH={desde:isoOk(prev.d),list:nuevos};
+}
+function renderFresh(){
+  const box=$("#fresh");
+  if(FRESH){const cur=new Set(events().map(evKey));FRESH.list=FRESH.list.filter(e=>cur.has(evKey(e)));if(!FRESH.list.length){FRESH=null;markSeen();}}
+  if(!FRESH){box.innerHTML="";return;}
+  FRESH.ids=new Set(FRESH.list.map(e=>e.o.id));
+  const w=FRESH.list.filter(e=>e.lvl==="warn").length,b=FRESH.list.length-w,parts=[];
+  if(w)parts.push(L(w===1?"1 ha entrado en aviso":w+" han entrado en aviso",w===1?"1 is now due soon":w+" are now due soon"));
+  if(b)parts.push(L(b===1?"1 ha vencido":b+" han vencido",b===1?"1 has expired":b+" have expired"));
+  box.innerHTML=`<span class="ft">${ico("bell")}<b>${L("Desde tu última visita","Since your last visit")}${FRESH.desde?" ("+fdate(FRESH.desde)+")":""}:</b> ${parts.join(L(" y "," and "))}.</span>
+    <span class="items">${FRESH.list.slice(0,6).map(e=>`<button data-fo="${e.k}|${e.o.id}"><span class="dot ${e.lvl}"></span>${esc(nm(e.o))}</button>`).join("")}${FRESH.list.length>6?`<span class="mut">+${FRESH.list.length-6}</span>`:""}</span>
+    <button class="b sm" id="freshOk">${L("Entendido","Got it")}</button>`;
+}
+
+/* ---------- estado de la vista ---------- */
+let G={g:null,s:null},FOLD=new Set(),q="",FL=null,SEL={k:null,id:null};
+const SORT={cert:["hasta",1],dom:["hasta",1]};
+const GRPN={env:["Entorno","Environment"],cli:["Cliente","Client"],dom:["Dominio","Domain"]};
+const gk=c=>DB.grp==="env"?(c.entorno||L("Sin entorno","No environment")):DB.grp==="cli"?(c.cliente||L("Sin cliente","No client")):raiz(c.cn);
+const sv=c=>c.servidor||L("Sin servidor","No server");
+const certsG=()=>DB.certs.filter(c=>(!G.g||gk(c)===G.g)&&(!G.s||sv(c)===G.s));
+const domsG=()=>!G.g||DB.grp==="env"?DB.doms:DB.doms.filter(d=>DB.grp==="cli"?(d.cliente||L("Sin cliente","No client"))===G.g:raiz(d.nombre)===G.g);
+const hayC=c=>!q||norm([c.cn,...c.san,c.emisor,c.servidor,c.servicio,c.entorno,c.cliente,c.responsable,c.serie,c.huella,c.notas].join(" ")).includes(norm(q));
+const hayD=d=>!q||norm([d.nombre,d.registrador,d.cliente,d.responsable,d.notas].join(" ")).includes(norm(q));
+const SK={cert:{cn:c=>c.cn,emisor:c=>c.emisor,servidor:c=>c.servidor+" "+c.servicio,responsable:c=>c.responsable,hasta:c=>c.hasta||"9999",auto:c=>c.auto?"0":"1"},
+  dom:{nombre:d=>d.nombre,registrador:d=>d.registrador,cliente:d=>d.cliente,responsable:d=>d.responsable,hasta:d=>d.hasta||"9999",auto:d=>d.auto?"0":"1"}};
+function sorted(list,k){const [f,dir]=SORT[k],g=SK[k][f];return list.slice().sort((a,b)=>String(g(a)).localeCompare(String(g(b)),"es",{numeric:true})*dir||nm(a).localeCompare(nm(b)));}
+const certList=()=>sorted(certsG().filter(c=>hayC(c)&&(!FL||st(c,"cert").lvl===FL)),"cert");
+const domList=()=>sorted(domsG().filter(d=>hayD(d)&&(!FL||st(d,"dom").lvl===FL)),"dom");
+function calList(){const ids=new Set([...certsG().filter(hayC),...domsG().filter(hayD)].map(o=>o.id));
+  return events().filter(e=>ids.has(e.o.id)&&e.d>=-30&&(!FL||e.lvl===FL)).sort((a,b)=>a.iso<b.iso?-1:a.iso>b.iso?1:0);}
+const selObj=()=>(SEL.k==="cert"?DB.certs:SEL.k==="dom"?DB.doms:[]).find(x=>x.id===SEL.id)||null;
+
+/* ---------- pintar ---------- */
+function render(){
+  $$("#grp [data-grp]").forEach(b=>b.classList.toggle("on",b.dataset.grp===DB.grp));
+  $$("#lang [data-l]").forEach(b=>b.classList.toggle("on",b.dataset.l===I18N.lang));
+  $$("#tabs [data-tab]").forEach(b=>b.classList.toggle("on",b.dataset.tab===DB.tab));
+  $("#nC").textContent=certList().length;$("#nD").textContent=domList().length;
+  renderCrumb();renderTree();renderHead();renderFresh();renderView();renderLog();renderInsp();renderBar();
+}
+function renderCrumb(){
+  const p=[L(...GRPN[DB.grp]),G.g,G.s].filter(Boolean);
+  $("#crumb").innerHTML=p.map((x,i)=>i===p.length-1&&i?`<b>${esc(x)}</b>`:esc(x)).join(ico("chev"));
+}
+function worst(list,k){const l=list.map(o=>st(o,k).lvl);return l.includes("bad")?"bad":l.includes("warn")?"warn":l.length&&l.every(x=>x==="none")?"none":"ok";}
+function renderTree(){
+  const by=new Map();DB.certs.forEach(c=>{const k=gk(c);if(!by.has(k))by.set(k,[]);by.get(k).push(c);});
+  const keys=[...by.keys()].sort((a,b)=>a.localeCompare(b,"es"));
+  let h=`<div class="tn${!G.g?" on":""}" data-g=""><span class="fold"></span>${ico("layers")}<span class="lbl">${L("Todos","All")}</span><span class="n">${DB.certs.length}</span></div>`;
+  keys.forEach(k=>{
+    const list=by.get(k),f=FOLD.has(k),svs=[...new Set(list.map(sv))].sort((a,b)=>a.localeCompare(b,"es"));
+    h+=`<div class="tn${G.g===k&&!G.s?" on":""}" data-g="${esc(k)}"><span class="fold" data-fold>${ico(f?"chev":"down")}</span><span class="dot ${worst(list,"cert")}"></span><span class="lbl">${esc(k)}</span><span class="n">${list.length}</span></div>`;
+    if(!f)svs.forEach(s=>{const l2=list.filter(c=>sv(c)===s);
+      h+=`<div class="tn l2${G.g===k&&G.s===s?" on":""}" data-g="${esc(k)}" data-s="${esc(s)}">${ico("server")}<span class="lbl">${esc(s)}</span><span class="n">${l2.length}</span></div>`;});
+  });
+  if(!DB.certs.length)h+=`<div class="empty-s">${L("Sin certificados","No certificates")}</div>`;
+  $("#tg").innerHTML=h;
+  const ds=DB.doms.slice().sort((a,b)=>(a.hasta||"9999").localeCompare(b.hasta||"9999"));
+  $("#td").innerHTML=ds.length?ds.map(d=>{const s=st(d,"dom");
+    return `<div class="tn${SEL.k==="dom"&&SEL.id===d.id?" on":""}" data-dom="${d.id}"><span class="dot ${s.lvl}"></span><span class="lbl">${esc(d.nombre)}</span><span class="n">${s.d==null?"—":s.d+" d"}</span></div>`;}).join("")
+    :`<div class="empty-s">${L("Ningún dominio todavía","No domains yet")}</div>`;
+}
+function renderHead(){
+  const cs=certsG(),ds=domsG(),all=[...cs.map(c=>st(c,"cert").lvl),...ds.map(d=>st(d,"dom").lvl)];
+  $("#h1").textContent=G.s||G.g||L("Todos los certificados","All certificates");
+  $("#hsub").textContent=L(`${cs.length} certificados · ${ds.length} dominios · aviso ${DB.cfg.aviso?DB.cfg.aviso+" días antes":"automático"}`,
+    `${cs.length} certificates · ${ds.length} domains · ${DB.cfg.aviso?DB.cfg.aviso+"-day":"automatic"} warning`);
+  const n=l=>all.filter(x=>x===l).length;
+  $("#stats").innerHTML=[["bad",L("Vencidos","Expired")],["warn",L("En aviso","Due soon")],["ok",L("Al día","OK")]].map(([l,t])=>
+    `<button class="stat${FL===l?" on":""}${n(l)?"":" off"}" data-fl="${l}" title="${L("Filtrar por estado","Filter by status")}"><span class="dot ${l}"></span>${t}<b>${n(l)}</b></button>`).join("");
+}
+function lifeCell(s){
+  if(s.d==null)return `<td class="r mut">—</td>`;
+  const p=s.v?Math.max(0,Math.min(100,s.d/s.v*100)):0,c=s.lvl==="ok"?"":s.lvl;
+  return `<td class="r"><span class="life ${c}"><i style="width:${p.toFixed(0)}%"></i></span><span class="days${c?" c-"+c:""}">${s.d} d</span></td>`;
+}
+function th(k,f,t,cls){const [sf,dir]=SORT[k],on=sf===f;
+  return `<th data-sort="${f}" class="${on?"sorted":""} ${cls||""}">${t}${on&&!cls?`<span class="ar">${dir>0?"↑":"↓"}</span>`:""}</th>`;}
+const isNew=o=>FRESH&&FRESH.ids&&FRESH.ids.has(o.id)?`<i class="new">${L("NUEVO","NEW")}</i>`:"";
+function emptyBox(t,p,acts){return `<div class="empty"><h2>${t}</h2><p>${p}</p><div class="row">${acts}</div></div>`;}
+const btn=(act,icon,t,pri)=>`<button class="b${pri?" pri":""}" data-act="${act}">${ico(icon)}${t}</button>`;
+function renderView(){
+  const v=$("#view"),tab=DB.tab;let ids=[];
+  if(tab==="cert"){
+    const list=certList();ids=list.map(c=>["cert",c.id]);
+    if(!DB.certs.length)v.innerHTML=emptyBox(L("Aún no hay certificados","No certificates yet"),
+      L("Pega el PEM de un certificado (o arrastra aquí un .pem, .crt o .cer) y se rellenan solos el nombre, los SAN, el emisor y las fechas. Se lee en el navegador: no sale de este equipo.",
+        "Paste a certificate's PEM (or drop a .pem, .crt or .cer file here) and the name, SANs, issuer and dates fill themselves in. It's read in the browser: it never leaves this computer."),
+      btn("pem","paste",L("Pegar PEM","Paste PEM"),1)+btn("add","plus",L("Añadir a mano","Add by hand"))+btn("seed","layers",L("Ver datos de ejemplo","Load sample data")));
+    else if(!list.length)v.innerHTML=emptyBox(L("Nada coincide","Nothing matches"),L("Ningún certificado cumple el filtro actual.","No certificate matches the current filter."),btn("clear","filter",L("Quitar filtros","Clear filters")));
+    else v.innerHTML=`<table class="grid"><thead><tr><th class="w18"></th>${th("cert","cn",L("Nombre","Name"))}${th("cert","emisor",L("Emisor","Issuer"))}${th("cert","servidor",L("Instalado en","Installed on"))}${th("cert","responsable",L("Responsable","Owner"))}${th("cert","hasta",L("Vence","Expires"))}${th("cert","hasta",L("Quedan","Left"),"r")}${th("cert","auto","Auto")}</tr></thead><tbody>${
+      list.map(c=>{const s=st(c,"cert"),x=c.san.filter(n=>n!==c.cn).length;
+        return `<tr data-k="cert" data-id="${c.id}"><td class="w18"><span class="dot ${s.lvl}"></span></td><td class="cn" title="${esc(c.san.join("\n"))}">${esc(c.cn)}${x?`<span class="san">+${x}</span>`:""}${isNew(c)}</td><td class="tr">${esc(c.emisor)}</td><td class="tr">${esc(c.servidor)}${c.servicio?`<span class="mut"> · ${esc(c.servicio)}</span>`:""}</td><td>${esc(c.responsable)}</td><td class="mono">${fdate(c.hasta)}</td>${lifeCell(s)}<td class="auto" title="${c.auto?L("Renovación automática","Auto-renewal"):L("Renovación manual","Manual renewal")}">${ico(c.auto?"check":"dash")}</td></tr>`;}).join("")}</tbody></table>`;
+  }else if(tab==="dom"){
+    const list=domList();ids=list.map(d=>["dom",d.id]);
+    if(!DB.doms.length)v.innerHTML=emptyBox(L("Aún no hay dominios","No domains yet"),
+      L("Apunta los dominios registrados y cuándo caduca cada uno: si caduca el dominio, da igual que el certificado esté al día.","Note your registered domains and when each one expires: if the domain lapses, an up-to-date certificate doesn't help."),
+      btn("dom","plus",L("Añadir dominio","Add domain"),1));
+    else if(!list.length)v.innerHTML=emptyBox(L("Nada coincide","Nothing matches"),L("Ningún dominio cumple el filtro actual.","No domain matches the current filter."),btn("clear","filter",L("Quitar filtros","Clear filters")));
+    else v.innerHTML=`<table class="grid"><thead><tr><th class="w18"></th>${th("dom","nombre",L("Dominio","Domain"))}${th("dom","registrador",L("Registrador","Registrar"))}${th("dom","cliente",L("Cliente","Client"))}${th("dom","responsable",L("Responsable","Owner"))}${th("dom","hasta",L("Vence","Expires"))}${th("dom","hasta",L("Quedan","Left"),"r")}${th("dom","auto","Auto")}</tr></thead><tbody>${
+      list.map(d=>{const s=st(d,"dom");
+        return `<tr data-k="dom" data-id="${d.id}"><td class="w18"><span class="dot ${s.lvl}"></span></td><td class="cn">${esc(d.nombre)}${isNew(d)}</td><td class="tr">${esc(d.registrador)}</td><td class="tr">${esc(d.cliente)}</td><td>${esc(d.responsable)}</td><td class="mono">${fdate(d.hasta)}</td>${lifeCell(s)}<td class="auto">${ico(d.auto?"check":"dash")}</td></tr>`;}).join("")}</tbody></table>`;
+  }else if(tab==="cal"){
+    const list=calList();ids=list.map(e=>[e.k,e.o.id]);
+    if(!list.length)v.innerHTML=emptyBox(L("Nada en el calendario","Nothing on the calendar"),L("No hay vencimientos con el filtro actual.","No expiry dates with the current filter."),btn("clear","filter",L("Quitar filtros","Clear filters")));
+    else{
+      let h=`<div class="cal"><div class="bar">${L(`${list.length} vencimientos (desde hace 30 días)`,`${list.length} expiry dates (from 30 days ago)`)}<span class="sp"></span>${btn("ics","cal",L("Exportar .ics","Export .ics"))}</div>`,mes="";
+      list.forEach(e=>{const m=e.iso.slice(0,7);
+        if(m!==mes){mes=m;h+=`<h4>${new Date(e.iso+"T12:00:00").toLocaleDateString(L("es-ES","en-GB"),{month:"long",year:"numeric"})}</h4>`;}
+        const o=e.o,where=e.k==="cert"?[o.servidor,o.servicio].filter(Boolean).join(" · "):o.registrador;
+        h+=`<div class="crow" data-k="${e.k}" data-id="${o.id}"><span class="dot ${e.lvl}"></span><span class="mono">${fdate(e.iso)}</span><span class="nm">${esc(nm(o))}</span><span class="mut">${L(...KIND[e.k])}</span><span>${esc(where)}</span><span class="days${e.lvl==="ok"?"":" c-"+e.lvl}">${e.d} d</span></div>`;});
+      v.innerHTML=h+"</div>";
+    }
+  }else v.innerHTML=`<div class="vlog">${logTable(logAll())}</div>`;
+  if(tab!=="log"&&!ids.some(([k,id])=>k===SEL.k&&id===SEL.id))SEL=ids.length?{k:ids[0][0],id:ids[0][1]}:{k:null,id:null};
+  markSel();
+}
+function markSel(){$$("#view [data-id]").forEach(x=>x.classList.toggle("on",x.dataset.id===SEL.id&&x.dataset.k===SEL.k));
+  $$("#td [data-dom]").forEach(x=>x.classList.toggle("on",SEL.k==="dom"&&x.dataset.dom===SEL.id));}
+function logTable(list){
+  if(!list.length)return `<div class="empty-s" style="padding:10px 14px">${L("Sin cambios todavía","No changes yet")}</div>`;
+  return `<table class="lg"><tbody>${list.map(x=>`<tr><td class="lt">${x.c?fdate(x.t):fdt(x.t)}</td><td class="act"><span class="dot ${LOGC[x.k]||"none"}"></span>${L(...LOGK[x.k])}</td><td class="obj">${esc(x.o)}</td><td>${esc(x.n)}</td></tr>`).join("")}</tbody></table>`;
+}
+function renderLog(){
+  const box=$("#log"),all=logAll();
+  box.style.display=DB.tab==="log"?"none":"";
+  box.classList.toggle("off",!DB.logOn);
+  $("#logN").textContent=L(`${all.length} entradas`,`${all.length} entries`);
+  $("#logTl").textContent=DB.logOn?L("Ocultar","Hide"):L("Mostrar","Show");
+  $("#logW").innerHTML=DB.logOn?logTable(all.slice(0,60)):"";
+}
+function timeline(o,s){
+  if(!o.hasta)return "";
+  const v=s.v||365,de=o.desde||addD(o.hasta,-v),tot=Math.max(1,dd(de,o.hasta)),cl=x=>Math.max(0,Math.min(100,x));
+  const pass=cl(dd(de,todayIso())/tot*100),w=cl((tot-s.av)/tot*100);
+  return `<div class="tl ${s.lvl==="ok"?"":s.lvl}"><i style="width:${pass.toFixed(1)}%"></i><u style="left:${w.toFixed(1)}%" title="${L("Empieza el aviso","Warning starts")}: ${fdate(addD(o.hasta,-s.av))}"></u></div>
+    <div class="tll"><span>${o.desde?fdate(o.desde):"—"}</span><span>${fdate(o.hasta)}</span></div>`;
+}
+const row=(t,v,m)=>v?`<dt>${t}</dt><dd${m?' class="mono"':""}>${esc(v)}</dd>`:"";
+function renderInsp(){
+  const box=$("#insp"),o=selObj();
+  if(!o){box.innerHTML=`<div class="iempty">${ico("cert")}<br>${L("Elige un certificado o un dominio para ver su ficha.","Pick a certificate or a domain to see its details.")}</div>`;return;}
+  const k=SEL.k,s=st(o,k),alert=o.auto&&(s.lvl==="warn"||s.lvl==="bad")?`<div class="alert">${L("Tiene renovación automática y aún no se ha renovado: comprueba que la tarea sigue funcionando.","It's set to auto-renew and hasn't renewed yet: check the renewal job is still working.")}</div>`:"";
+  const acts=`<div class="acts"><button data-act="renew">${ico("refresh")}<span>${L("Anotar renovación…","Record renewal…")}</span>${kb("R")}</button><button data-act="edit">${ico("edit")}<span>${L("Editar","Edit")}</span>${kb("↵")}</button><button data-act="copy">${ico("copy")}<span>${k==="cert"?L("Copiar nombres (SAN)","Copy names (SAN)"):L("Copiar dominio","Copy domain")}</span>${kb("C")}</button><button data-act="ics1">${ico("cal")}<span>${L("Aviso en el calendario (.ics)","Calendar reminder (.ics)")}</span></button></div>`;
+  const notes=o.notas?`<div class="sec"><h3>${L("Notas","Notes")}</h3><div class="note">${esc(o.notas)}</div></div>`:"";
+  const head=`<div class="ih"><span class="st ${s.lvl==="none"?"":s.lvl}"><span class="dot ${s.lvl}"></span>${stTxt(s)}</span><h2>${esc(nm(o))}</h2><p>${esc(k==="cert"?o.emisor:o.registrador)}</p>${timeline(o,s)}${alert}</div>`;
+  const yes=b=>b?L("Automática","Automatic"):L("Manual","Manual");
+  if(k==="cert"){
+    box.innerHTML=head+`<div class="sec"><h3>${L("Nombres (SAN)","Names (SAN)")}</h3><div class="chips">${o.san.map(n=>`<span class="chip">${esc(n)}</span>`).join("")}</div></div>
+    <div class="sec"><h3>${L("Despliegue","Deployment")}</h3><dl>${row(L("Servidor","Server"),o.servidor)}${row(L("Servicio","Service"),o.servicio)}${row(L("Entorno","Environment"),o.entorno)}${row(L("Cliente","Client"),o.cliente)}${row(L("Responsable","Owner"),o.responsable)}${row(L("Renovación","Renewal"),yes(o.auto))}</dl></div>
+    <div class="sec"><h3>${L("Certificado","Certificate")}</h3><dl>${row(L("Validez","Validity"),s.v?nd(s.v)+(o.desde?"":L(" (estimada)"," (estimated)")):"")}${o.hasta?row(L("Aviso desde","Warn from"),fdate(addD(o.hasta,-s.av))+" · "+L(nd(s.av)+" antes",nd(s.av)+" before")):""}${row(L("Clave","Key"),o.clave)}${row(L("Nº de serie","Serial"),o.serie,1)}${row("SHA-256",o.huella,1)}</dl></div>`+notes+acts;
+  }else{
+    const r=raiz(o.nombre),rel=DB.certs.filter(c=>raiz(c.cn)===r||c.san.some(n=>raiz(n)===r));
+    box.innerHTML=head+`<div class="sec"><h3>${L("Registro","Registration")}</h3><dl>${row(L("Registrador","Registrar"),o.registrador)}${row(L("Cliente","Client"),o.cliente)}${row(L("Responsable","Owner"),o.responsable)}${row(L("Renovación","Renewal"),yes(o.auto))}${o.hasta?row(L("Aviso desde","Warn from"),fdate(addD(o.hasta,-s.av))):""}</dl></div>
+    <div class="sec"><h3>${L("Certificados de este dominio","Certificates for this domain")}</h3>${rel.length?`<div class="pres">${rel.map(c=>{const cs=st(c,"cert");
+      return `<button class="prow" data-sel="cert|${c.id}"><span class="dot ${cs.lvl}"></span><b>${esc(c.cn)}</b><span class="mono mut">${fdate(c.hasta)}</span></button>`;}).join("")}</div>`:`<div class="hint">${L("Ninguno","None")}</div>`}</div>`+notes+acts;
+  }
+}
+function renderBar(){
+  $("#counts").textContent=L(`${DB.certs.length} certificados · ${DB.doms.length} dominios`,`${DB.certs.length} certificates · ${DB.doms.length} domains`);
+  $("#avinfo").textContent=DB.cfg.aviso?L(`Aviso: ${DB.cfg.aviso} días antes`,`Warning: ${DB.cfg.aviso} days before`):L("Aviso: automático según la vida del certificado","Warning: automatic, based on certificate lifetime");
+}
+
+/* ---------- ventanas ---------- */
+const veil=$("#veil"),modal=$("#modal");
+let mDirty=false;
+function openModal(html,wide){modal.className="modal"+(wide?" wide":"");modal.innerHTML=html;veil.classList.add("on");mDirty=false;modal.oninput=()=>{mDirty=true;};modal.onchange=null;
+  const c=$("#m_cancel");if(c)c.onclick=tryClose;}
+function closeModal(){veil.classList.remove("on");modal.innerHTML="";modal.oninput=modal.onchange=null;}
+function tryClose(){if(mDirty&&!confirm(L("¿Descartar los cambios?","Discard your changes?")))return;closeModal();}
+veil.addEventListener("mousedown",e=>{if(e.target===veil)tryClose();});
+const vF=id=>$("#"+id).value.trim();
+const fld=(id,t,v,extra)=>`<div class="fld"><label for="${id}">${t}</label><input class="in" id="${id}" value="${esc(v)}" ${extra||""} autocomplete="off" spellcheck="false"></div>`;
+const dlist=(id,vals)=>`<datalist id="${id}">${[...new Set(vals.filter(Boolean))].sort().map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`;
+const foot=(isNew,okTxt)=>`<div class="foot">${isNew?"":`<button class="b danger" id="m_del">${ico("trash")}<span>${L("Borrar","Delete")}</span></button>`}<span class="sp"></span><button class="b" id="m_cancel">${L("Cancelar","Cancel")}</button><button class="b pri" id="m_ok">${okTxt} ${kb("Ctrl","↵")}</button></div>`;
+function armDel(k,o){const b=$("#m_del");if(!b)return;b.onclick=()=>{
+  if(!b.classList.contains("armed")){b.classList.add("armed");$("span",b).textContent=L("¿Seguro? Pulsa otra vez","Sure? Click again");return;}
+  delObj(k,o.id);};}
+function delObj(k,id){
+  const arr=k==="cert"?DB.certs:DB.doms,i=arr.findIndex(x=>x.id===id);if(i<0)return;
+  const o=arr.splice(i,1)[0];logAdd("del",nm(o),L(...KIND[k]));
+  if(SEL.id===id)SEL={k:null,id:null};
+  save();closeModal();render();toastUndo(L("Borrado: ","Deleted: ")+nm(o));
+}
+const FN={cn:["Nombre","Name"],san:["SAN","SAN"],emisor:["Emisor","Issuer"],desde:["Desde","From"],hasta:["Vence","Expires"],auto:["Renovación automática","Auto-renewal"],
+  servidor:["Servidor","Server"],servicio:["Servicio","Service"],entorno:["Entorno","Environment"],cliente:["Cliente","Client"],responsable:["Responsable","Owner"],
+  clave:["Clave","Key"],serie:["Nº de serie","Serial"],huella:["SHA-256","SHA-256"],notas:["Notas","Notes"],nombre:["Dominio","Domain"],registrador:["Registrador","Registrar"]};
+const diff=(a,b)=>Object.keys(b).filter(f=>FN[f]&&JSON.stringify(a[f])!==JSON.stringify(b[f])).map(f=>L(...FN[f]));
+function readCert(){
+  const cn=vF("f_cn"),san=$("#f_san").value.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean);
+  return {cn,san:san.length?san:(cn?[cn]:[]),emisor:vF("f_em"),desde:vF("f_de"),hasta:vF("f_ha"),auto:$("#f_auto").checked,servidor:vF("f_sv"),servicio:vF("f_ss"),
+    entorno:vF("f_en"),cliente:vF("f_cl"),responsable:vF("f_re"),clave:vF("f_ke"),serie:vF("f_se"),huella:vF("f_hu"),notas:$("#f_nt").value.trim()};
+}
+function openCert(c,isNew,src){
+  const has=f=>DB.certs.some(x=>x[f]&&x[f]===G.g)?G.g:"";
+  c=c||{cn:"",san:[],emisor:"",desde:"",hasta:"",auto:false,servidor:G.s&&G.s!==sv({})?G.s:"",servicio:"",entorno:DB.grp==="env"?has("entorno"):"",
+    cliente:DB.grp==="cli"?has("cliente"):"",responsable:"",clave:"",serie:"",huella:"",notas:""};
+  const V=f=>DB.certs.map(x=>x[f]);
+  openModal(`<h3>${isNew?L("Nuevo certificado","New certificate"):esc(c.cn)}${src?`<span class="tag">${L("Leído del PEM","Read from PEM")}</span>`:""}</h3>
+  <div class="body">
+    <div class="g2">${fld("f_cn",L("Nombre común (CN)","Common name (CN)"),c.cn,'placeholder="www.ejemplo.es"')}${fld("f_em",L("Emisor","Issuer"),c.emisor,'list="dl_em"')}</div>
+    <div class="fld"><label for="f_san">${L("Nombres alternativos (SAN), uno por línea","Alternative names (SAN), one per line")}</label><textarea class="in" id="f_san" rows="3" spellcheck="false">${esc(c.san.join("\n"))}</textarea></div>
+    <div class="g3">${fld("f_de",L("Válido desde","Valid from"),c.desde,'type="date"')}${fld("f_ha",L("Vence","Expires"),c.hasta,'type="date"')}
+      <label class="chk" style="padding-top:20px"><input type="checkbox" id="f_auto"${c.auto?" checked":""}> ${L("Renovación automática","Auto-renewal")}</label></div>
+    <div class="hint" id="f_hint"></div>
+    <div class="g3">${fld("f_sv",L("Servidor","Server"),c.servidor,'list="dl_sv" placeholder="srv-web01"')}${fld("f_ss",L("Servicio","Service"),c.servicio,'list="dl_ss" placeholder="IIS, nginx, Exchange…"')}${fld("f_en",L("Entorno","Environment"),c.entorno,'list="dl_en"')}</div>
+    <div class="g2">${fld("f_cl",L("Cliente","Client"),c.cliente,'list="dl_cl"')}${fld("f_re",L("Responsable","Owner"),c.responsable,'list="dl_re"')}</div>
+    <div class="g3">${fld("f_ke",L("Clave","Key"),c.clave,'placeholder="RSA 2048"')}${fld("f_se",L("Nº de serie","Serial number"),c.serie)}${fld("f_hu","SHA-256",c.huella)}</div>
+    <div class="fld"><label for="f_nt">${L("Notas","Notes")}</label><textarea class="in tx" id="f_nt" rows="3">${esc(c.notas)}</textarea></div>
+    ${dlist("dl_em",V("emisor"))}${dlist("dl_sv",V("servidor"))}${dlist("dl_ss",V("servicio"))}${dlist("dl_en",V("entorno"))}${dlist("dl_cl",[...V("cliente"),...DB.doms.map(d=>d.cliente)])}${dlist("dl_re",V("responsable"))}
+  </div>${foot(isNew,isNew?L("Añadir","Add"):L("Guardar","Save"))}`,true);
+  const hint=()=>{const v=readCert(),h=$("#f_hint");
+    if(!isoOk(v.hasta)){h.textContent=L("Sin fecha de vencimiento no hay nada que avisar.","Without an expiry date there's nothing to warn about.");return;}
+    const av=avisoDe(v,"cert");
+    h.innerHTML=L(`Validez de <b>${nd(vida(v))}</b>${v.desde?"":" (estimada)"}: avisará <b>${nd(av)} antes</b>, desde el <b>${fdate(addD(v.hasta,-av))}</b>.`,
+      `Validity <b>${nd(vida(v))}</b>${v.desde?"":" (estimated)"}: warns <b>${nd(av)} before</b>, from <b>${fdate(addD(v.hasta,-av))}</b>.`);};
+  modal.oninput=e=>{mDirty=true;e.target.classList.remove("bad");hint();};hint();
+  if(src)mDirty=true;
+  armDel("cert",c);
+  $("#m_ok").onclick=()=>{
+    const v=readCert();
+    if(!v.cn){$("#f_cn").classList.add("bad");$("#f_cn").focus();return;}
+    if(v.desde&&v.hasta&&v.desde>v.hasta){$("#f_de").classList.add("bad");toast(L("La fecha de inicio es posterior al vencimiento","The start date is after the expiry date"));return;}
+    if(isNew){const n=cleanCert({...v,id:nid("c")});DB.certs.push(n);logAdd(src?"pem":"add",n.cn,"");SEL={k:"cert",id:n.id};if(DB.tab!=="cal")DB.tab="cert";}
+    else{const n=cleanCert({...v,id:c.id}),ch=diff(c,n);Object.assign(c,n);if(ch.length)logAdd("edit",c.cn,ch.join(", "));}
+    save();closeModal();render();
+  };
+  $(isNew&&!src?"#f_cn":"#f_sv").focus();
+}
+function openDom(d,isNew){
+  d=d||{nombre:"",registrador:"",hasta:"",cliente:DB.grp==="cli"&&G.g&&DB.doms.concat(DB.certs).some(x=>x.cliente===G.g)?G.g:"",responsable:"",auto:false,notas:""};
+  openModal(`<h3>${isNew?L("Nuevo dominio","New domain"):esc(d.nombre)}</h3>
+  <div class="body">
+    <div class="g2">${fld("f_dn",L("Dominio","Domain"),d.nombre,'placeholder="ejemplo.es"')}${fld("f_rg",L("Registrador","Registrar"),d.registrador,'list="dl_rg" placeholder="IONOS, OVHcloud, Arsys…"')}</div>
+    <div class="g2">${fld("f_ha",L("Vence","Expires"),d.hasta,'type="date"')}<label class="chk" style="padding-top:20px"><input type="checkbox" id="f_auto"${d.auto?" checked":""}> ${L("Renovación automática","Auto-renewal")}</label></div>
+    <div class="g2">${fld("f_cl",L("Cliente","Client"),d.cliente,'list="dl_cl"')}${fld("f_re",L("Responsable","Owner"),d.responsable,'list="dl_re"')}</div>
+    <div class="fld"><label for="f_nt">${L("Notas","Notes")}</label><textarea class="in tx" id="f_nt" rows="3">${esc(d.notas)}</textarea></div>
+    <div class="hint">${L("Los dominios avisan 30 días antes de caducar (o lo que fijes en Ajustes).","Domains warn 30 days before they expire (or whatever you set in Settings).")}</div>
+    ${dlist("dl_rg",DB.doms.map(x=>x.registrador))}${dlist("dl_cl",[...DB.doms,...DB.certs].map(x=>x.cliente))}${dlist("dl_re",[...DB.doms,...DB.certs].map(x=>x.responsable))}
+  </div>${foot(isNew,isNew?L("Añadir","Add"):L("Guardar","Save"))}`);
+  modal.oninput=e=>{mDirty=true;e.target.classList.remove("bad");};
+  armDel("dom",d);
+  $("#m_ok").onclick=()=>{
+    const v={nombre:vF("f_dn").toLowerCase().replace(/^https?:\/\//,"").replace(/\/.*$/,""),registrador:vF("f_rg"),hasta:vF("f_ha"),cliente:vF("f_cl"),responsable:vF("f_re"),auto:$("#f_auto").checked,notas:$("#f_nt").value.trim()};
+    if(!v.nombre){$("#f_dn").classList.add("bad");$("#f_dn").focus();return;}
+    if(isNew){const n=cleanDom({...v,id:nid("d")});DB.doms.push(n);logAdd("add",n.nombre,L("Dominio","Domain"));SEL={k:"dom",id:n.id};if(DB.tab!=="cal")DB.tab="dom";}
+    else{const n=cleanDom({...v,id:d.id}),ch=diff(d,n);Object.assign(d,n);if(ch.length)logAdd("edit",d.nombre,ch.join(", "));}
+    save();closeModal();render();
+  };
+  $("#f_dn").focus();
+}
+const PRIV=/PRIVATE KEY-----/;
+const pemRow=p=>{const s=p.hasta?days(p.hasta):null,l=s==null?"none":s<0?"bad":"ok";
+  return `<div class="prow"><span class="dot ${l}"></span><b>${esc(p.cn)}</b><span class="mut">${esc(p.emisor)}${p.ca?" · CA":""}</span><span class="mono">${fdate(p.desde)} → ${fdate(p.hasta)}</span></div>`;};
+function openPem(){
+  openModal(`<h3>${L("Importar certificado (PEM)","Import certificate (PEM)")}</h3>
+  <div class="body">
+    <div class="hint">${L("Pega uno o varios bloques <b>-----BEGIN CERTIFICATE-----</b>, elige un archivo .pem, .crt, .cer o .der, o arrástralo a la ventana. Se lee aquí, en el navegador: el certificado no sale de este equipo. Si ya existe uno con el mismo nombre y vence antes, se anota como renovación.",
+      "Paste one or more <b>-----BEGIN CERTIFICATE-----</b> blocks, choose a .pem, .crt, .cer or .der file, or drop it onto the window. It's read here, in the browser: the certificate never leaves this computer. If one with the same name already exists and expires earlier, it's recorded as a renewal.")}</div>
+    <textarea class="in" id="p_txt" rows="9" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+    <div class="pres" id="p_res"></div>
+  </div>
+  <div class="foot"><button class="b" id="p_file">${ico("upload")}${L("Elegir archivo…","Choose file…")}</button><span class="sp"></span><button class="b" id="m_cancel">${L("Cancelar","Cancel")}</button><button class="b pri" id="m_ok" disabled>${L("Importar","Import")} ${kb("Ctrl","↵")}</button></div>`,true);
+  const upd=()=>{const t=$("#p_txt").value,r=X509.peek(t);mDirty=!!t.trim();
+    let h=PRIV.test(t)?`<div class="alert">${L("Has pegado también una clave privada. CertScope la ignora y no la guarda, pero no la pegues en ningún sitio que no sea el servidor.","You've also pasted a private key. CertScope ignores it and doesn't store it, but don't paste it anywhere other than the server.")}</div>`:"";
+    h+=r.ok.map(pemRow).join("");
+    if(r.bad)h+=`<div class="hint c-bad">${L(r.bad+" bloque(s) no se han podido leer.",r.bad+" block(s) couldn't be read.")}</div>`;
+    else if(t.trim()&&!r.ok.length)h+=`<div class="hint">${L("No se reconoce ningún bloque CERTIFICATE todavía.","No CERTIFICATE block recognised yet.")}</div>`;
+    $("#p_res").innerHTML=h;$("#m_ok").disabled=!r.ok.length;};
+  modal.oninput=upd;
+  $("#p_file").onclick=()=>pickFile(".pem,.crt,.cer,.der,.cert,.txt",true);
+  $("#m_ok").onclick=async()=>{const r=await X509.read(X509.blocks($("#p_txt").value));closeModal();applyPem(r);};
+  $("#p_txt").focus();
+}
+const fromPem=p=>({cn:p.cn,san:p.san,emisor:p.emisor,desde:p.desde,hasta:p.hasta,serie:p.serie,clave:p.clave,huella:p.huella||"",
+  auto:false,servidor:"",servicio:"",entorno:"",cliente:"",responsable:"",notas:""});
+function applyPem(r){
+  let list=r.ok;
+  if(!list.length){toast(L("No se ha podido leer ningún certificado","No certificate could be read"));return;}
+  const leaf=list.filter(x=>!x.ca);if(leaf.length)list=leaf;   // en una cadena solo interesa el del servidor
+  const add=[];let ren=0,dup=0;
+  for(const p of list){
+    if(DB.certs.some(c=>c.serie&&c.serie===p.serie)){dup++;continue;}
+    const prev=DB.certs.find(c=>c.cn.toLowerCase()===p.cn.toLowerCase()&&(!c.hasta||c.hasta<p.hasta));
+    if(prev){const o=prev.hasta;Object.assign(prev,{san:p.san,emisor:p.emisor,desde:p.desde,hasta:p.hasta,serie:p.serie,clave:p.clave,huella:p.huella});
+      logAdd("renew",prev.cn,fdate(o)+" → "+fdate(p.hasta));ren++;SEL={k:"cert",id:prev.id};continue;}
+    add.push(p);
+  }
+  if(ren){save();render();}
+  if(add.length===1){openCert(fromPem(add[0]),true,true);if(ren||dup)toast(L(`${ren} renovados · ${dup} ya estaban`,`${ren} renewed · ${dup} already there`));return;}
+  add.forEach(p=>{const c=cleanCert({...fromPem(p),id:nid("c")});DB.certs.push(c);logAdd("pem",c.cn,"");SEL={k:"cert",id:c.id};});
+  if(add.length){DB.tab="cert";save();render();}
+  toast(L(`${add.length} añadidos · ${ren} renovados · ${dup} ya estaban`,`${add.length} added · ${ren} renewed · ${dup} already there`)+(r.bad?L(` · ${r.bad} ilegibles`,` · ${r.bad} unreadable`):""));
+}
+const addY=(iso,n)=>isoOk((+iso.slice(0,4)+n)+iso.slice(4))||addD(iso,365*n);
+function openRenew(o,k){
+  const isC=k==="cert",t=todayIso(),base=o.hasta&&o.hasta>t?o.hasta:t;
+  const de=t,ha=isC?addD(t,vida(o)||90):addY(base,1);
+  openModal(`<h3>${L("Anotar renovación","Record renewal")}<span class="tag">${esc(nm(o))}</span></h3>
+  <div class="body">
+    <div class="hint">${isC?L("Pon las fechas del certificado nuevo. Si lo tienes a mano, pega su PEM y se rellenan solas (también el nº de serie y la huella).","Enter the new certificate's dates. If you have it, paste its PEM and they fill themselves in (serial and fingerprint too)."):
+      L("Nueva fecha de caducidad del dominio, tal y como aparece en el registrador.","The domain's new expiry date, as shown by the registrar.")}</div>
+    <div class="g2">${isC?fld("r_de",L("Válido desde","Valid from"),de,'type="date"'):""}${fld("r_ha",L("Nuevo vencimiento","New expiry date"),ha,'type="date"')}</div>
+    ${isC?`<textarea class="in" id="r_pem" rows="5" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----  (${L("opcional","optional")})"></textarea><div class="pres" id="r_res"></div>`:""}
+  </div>
+  <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cancelar","Cancel")}</button><button class="b pri" id="m_ok">${L("Anotar","Record")} ${kb("Ctrl","↵")}</button></div>`);
+  let P=null;
+  modal.oninput=e=>{mDirty=true;e.target.classList.remove("bad");
+    if(e.target.id!=="r_pem")return;
+    const r=X509.peek(e.target.value),c=r.ok.filter(x=>!x.ca)[0]||r.ok[0];P=c||null;
+    if(!c){$("#r_res").innerHTML="";return;}
+    $("#r_de").value=c.desde;$("#r_ha").value=c.hasta;
+    const ok=c.cn.toLowerCase()===o.cn.toLowerCase()||c.san.some(n=>n.toLowerCase()===o.cn.toLowerCase());
+    $("#r_res").innerHTML=pemRow(c)+(ok?"":`<div class="alert">${L(`Este certificado es de ${esc(c.cn)}, no de ${esc(o.cn)}. Comprueba que es el correcto.`,`This certificate is for ${esc(c.cn)}, not ${esc(o.cn)}. Check it's the right one.`)}</div>`);};
+  $("#m_ok").onclick=async()=>{
+    const nh=isoOk(vF("r_ha")),nd2=isC?isoOk(vF("r_de")):"";
+    if(!nh||nh<=t&&!P){$("#r_ha").classList.add("bad");toast(L("La nueva fecha tiene que ser posterior a hoy","The new date must be after today"));return;}
+    if(isC&&nd2&&nd2>nh){$("#r_de").classList.add("bad");return;}
+    const old=o.hasta;
+    if(isC&&P){const r=await X509.read(X509.blocks($("#r_pem").value)),c=r.ok.filter(x=>!x.ca)[0]||r.ok[0];
+      if(c)Object.assign(o,{san:c.san,emisor:c.emisor,serie:c.serie,clave:c.clave,huella:c.huella});}
+    if(isC)o.desde=nd2;o.hasta=nh;
+    logAdd("renew",nm(o),(old?fdate(old):"—")+" → "+fdate(nh));
+    save();closeModal();render();toast(L("Renovación anotada: ","Renewal recorded: ")+nm(o));
+  };
+  $("#r_ha").focus();
+}
+function openCfg(){
+  const a=DB.cfg.aviso;
+  openModal(`<h3>${L("Ajustes","Settings")}</h3>
+  <div class="body">
+    <div class="fld"><label>${L("Cuándo avisar","When to warn")}</label>
+      <label class="chk"><input type="radio" name="c_m" value="a"${a?"":" checked"}> ${L("Automático, según la vida de cada certificado (recomendado)","Automatic, based on each certificate's lifetime (recommended)")}</label></div>
+    <div class="hint ind">${L("Avisa con un tercio de su validez, como mucho 30 días antes. Las CA públicas están acortando la validez máxima: <b>200 días</b> desde el 15/03/2026, <b>100 días</b> desde el 15/03/2027 y <b>47 días</b> desde el 15/03/2029. En automático, uno de 47 días avisa 16 días antes y uno de 90 o más, 30 días antes. Los dominios avisan 30 días antes.",
+      "Warns at a third of its validity, at most 30 days before. Public CAs are shortening the maximum validity: <b>200 days</b> from 15/03/2026, <b>100 days</b> from 15/03/2027 and <b>47 days</b> from 15/03/2029. In automatic mode, a 47-day certificate warns 16 days before and one of 90 days or more, 30 days before. Domains warn 30 days before.")}</div>
+    <label class="chk"><input type="radio" name="c_m" value="f"${a?" checked":""}> ${L("Fijo:","Fixed:")} <input class="in num" type="number" id="c_av" min="1" max="365" value="${a||30}"> ${L("días antes, para todo","days before, for everything")}</label>
+    ${fld("c_emp",L("Empresa o cliente (sale en el PDF y en el calendario)","Company or client (shown on the PDF and calendar)"),DB.cfg.empresa)}
+    <div class="fld"><label>${L("Datos","Data")}</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="b" id="c_seed">${ico("layers")}${L("Cargar datos de ejemplo","Load sample data")}</button><button class="b danger" id="c_blank">${ico("trash")}${L("Empezar en blanco","Start blank")}</button></div>
+      <div class="hint" style="margin-top:6px">${L("Las dos opciones sustituyen el inventario actual. Se pueden deshacer con Ctrl+Z.","Both replace the current inventory. They can be undone with Ctrl+Z.")}</div></div>
+  </div>
+  <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cancelar","Cancel")}</button><button class="b pri" id="m_ok">${L("Guardar","Save")} ${kb("Ctrl","↵")}</button></div>`);
+  $("#c_av").onfocus=()=>{$('[name=c_m][value=f]').checked=true;};
+  const replace=(sd,msg)=>{if(!confirm(msg))return;const s=sd?seed():{certs:[],doms:[],log:[]};DB.certs=s.certs;DB.doms=s.doms;DB.log=s.log;
+    G={g:null,s:null};q="";$("#filter").value="";FL=null;SEL={k:null,id:null};save();closeModal();render();toastUndo(L("Inventario sustituido","Inventory replaced"));};
+  $("#c_seed").onclick=()=>replace(true,L("Se sustituirá el inventario actual por los datos de ejemplo. ¿Seguir?","The current inventory will be replaced with the sample data. Continue?"));
+  $("#c_blank").onclick=()=>replace(false,L("Se borrará todo el inventario (certificados, dominios y registro). ¿Seguir?","The whole inventory (certificates, domains and log) will be deleted. Continue?"));
+  $("#m_ok").onclick=()=>{
+    const fixed=$('[name=c_m][value=f]').checked,n=parseInt($("#c_av").value,10);
+    if(fixed&&!(n>=1&&n<=365)){$("#c_av").classList.add("bad");return;}
+    DB.cfg={aviso:fixed?n:0,empresa:t80(vF("c_emp"),120)};save();closeModal();render();
+  };
+}
+function openKeys(){
+  const K=[[["Ctrl","K"],["Paleta de comandos","Command palette"]],[["N"],["Añadir certificado","Add certificate"]],[["I"],["Pegar PEM","Paste PEM"]],[["D"],["Añadir dominio","Add domain"]],
+    [["J"],["Siguiente","Next"]],[["K"],["Anterior","Previous"]],[["↵"],["Editar el seleccionado","Edit selected"]],[["R"],["Anotar renovación","Record renewal"]],[["C"],["Copiar nombres","Copy names"]],
+    [["/"],["Filtrar","Filter"]],[["1","2","3","4"],["Certificados · Dominios · Calendario · Registro","Certificates · Domains · Calendar · Log"]],[["L"],["Mostrar u ocultar el registro","Show or hide the log"]],
+    [[","],["Ajustes","Settings"]],[["Ctrl","Z"],["Deshacer","Undo"]],[["Ctrl","Y"],["Rehacer","Redo"]],[["Esc"],["Quitar filtros o cerrar","Clear filters or close"]]];
+  openModal(`<h3>${L("Atajos de teclado","Keyboard shortcuts")}</h3><div class="body"><div class="keys">${K.map(([k,t])=>`<span>${kb(...k)}</span><span>${L(...t)}</span>`).join("")}</div></div>
+  <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cerrar","Close")}</button></div>`);
+}
+const NEWS=[{v:"1.0",d:["22 de octubre de 2026","October 22, 2026"],items:[
+  ["Inventario de certificados TLS y dominios: cuándo vence cada uno, dónde está instalado y quién lo renueva.","Inventory of TLS certificates and domains: when each one expires, where it's installed and who renews it."],
+  ["Importa certificados pegando el PEM o arrastrando .pem, .crt, .cer o .der. Se leen en el navegador y no salen del equipo.","Import certificates by pasting the PEM or dropping .pem, .crt, .cer or .der files. They're read in the browser and never leave the computer."],
+  ["Aviso automático según la vida de cada certificado, preparado para las validez de 200, 100 y 47 días.","Automatic warning based on each certificate's lifetime, ready for 200, 100 and 47-day validity."],
+  ["Calendario .ics con los avisos, informe PDF, Excel (CSV) y copia de seguridad JSON.","Calendar (.ics) with the reminders, PDF report, Excel (CSV) and JSON backup."],
+  ["Guardado en el navegador o en un archivo vinculado, deshacer y rehacer, paleta de comandos (Ctrl+K) y español o inglés.","Saved in the browser or to a linked file, undo and redo, command palette (Ctrl+K), and Spanish or English."]]}];
+function openNews(){
+  openModal(`<h3>${L("Novedades","What's new")}</h3><div class="body">${NEWS.map(n=>`<div class="nv"><h4>CertScope ${n.v}<span>${L(...n.d)}</span></h4><ul>${n.items.map(i=>`<li>${L(...i)}</li>`).join("")}</ul></div>`).join("")}</div>
+  <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cerrar","Close")}</button></div>`);
+}
+
+/* ---------- certificados X.509 (DER / PEM) ----------
+   Lector ASN.1 minimo: solo lo que hace falta para el inventario. Todo ocurre en el navegador. */
+const X509=(()=>{
+  const hexs=(u,s,e)=>[...u.subarray(s,e)].map(x=>x.toString(16).padStart(2,"0").toUpperCase()).join(":");
+  function b64(s){const bin=atob(s.replace(/[^A-Za-z0-9+/=]/g,""));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u;}
+  function blocks(txt){
+    const out=[],re=/-----BEGIN (?:X509 |TRUSTED )?CERTIFICATE-----([\s\S]*?)-----END (?:X509 |TRUSTED )?CERTIFICATE-----/g;let m;
+    while((m=re.exec(String(txt||"")))){try{out.push(b64(m[1]));}catch(e){out.push(new Uint8Array(0));}}
+    return out;
+  }
+  function node(b,p){
+    if(p+2>b.length)throw new Error("asn1");
+    const tag=b[p];let len=b[p+1],h=2;
+    if(len&0x80){const n=len&0x7f;if(n<1||n>4||p+2+n>b.length)throw new Error("asn1");len=0;for(let i=0;i<n;i++)len=len*256+b[p+2+i];h+=n;}
+    const s=p+h,e=s+len;if(e>b.length)throw new Error("asn1");
+    return {tag,s,e};
+  }
+  function kids(b,n){const out=[];let p=n.s;while(p<n.e){const k=node(b,p);if(k.e>n.e)throw new Error("asn1");out.push(k);p=k.e;}return out;}
+  function oid(b,n){const v=[];let x=0;for(let i=n.s;i<n.e;i++){x=x*128+(b[i]&0x7f);if(!(b[i]&0x80)){v.push(x);x=0;}}
+    const f=v.shift(),a=f<40?0:f<80?1:2;return [a,f-a*40,...v].join(".");}
+  function text(b,n){const u=b.subarray(n.s,n.e);
+    if(n.tag===0x1e){let s="";for(let i=0;i+1<u.length;i+=2)s+=String.fromCharCode(u[i]<<8|u[i+1]);return s;}
+    return new TextDecoder(n.tag===0x0c?"utf-8":"latin1").decode(u);}
+  function time(b,n){
+    const s=new TextDecoder("latin1").decode(b.subarray(n.s,n.e));let y,r;
+    if(n.tag===0x17){y=+s.slice(0,2);y+=y<50?2000:1900;r=s.slice(2);}else if(n.tag===0x18){y=+s.slice(0,4);r=s.slice(4);}else throw new Error("time");
+    const iso=y+"-"+r.slice(0,2)+"-"+r.slice(2,4);if(!isoOk(iso))throw new Error("time");return iso;
+  }
+  function name(b,n){const o={};kids(b,n).forEach(set=>kids(b,set).forEach(atv=>{const [t,v]=kids(b,atv);const id=oid(b,t);if(!(id in o))o[id]=text(b,v);}));return o;}
+  const CURVE={"1.2.840.10045.3.1.7":"P-256","1.3.132.0.34":"P-384","1.3.132.0.35":"P-521"};
+  function key(b,spki){
+    const [alg,bits]=kids(b,spki),[ao,par]=kids(b,alg),id=oid(b,ao);
+    if(id==="1.2.840.113549.1.1.1"){const [mod]=kids(b,node(b,bits.s+1));let s=mod.s;while(s<mod.e-1&&b[s]===0)s++;
+      return "RSA "+((mod.e-s)*8-(Math.clz32(b[s])-24));}
+    if(id==="1.2.840.10045.2.1"){const c=par&&par.tag===6?oid(b,par):"";return "EC "+(CURVE[c]||c);}
+    return {"1.3.101.112":"Ed25519","1.3.101.113":"Ed448"}[id]||id;
+  }
+  const ip6=u=>[0,1,2,3,4,5,6,7].map(i=>((u[2*i]<<8)|u[2*i+1]).toString(16)).join(":");
+  function parse(b){
+    const root=node(b,0);if(root.tag!==0x30)throw new Error("x509");
+    const [tbs]=kids(b,root),f=kids(b,tbs);let i=0;
+    if(f[0].tag===0xa0)i++;               // version
+    const serial=f[i++];i++;              // + algoritmo de firma
+    const issuer=name(b,f[i++]),val=kids(b,f[i++]),subject=name(b,f[i++]),spki=f[i++];
+    const san=[];let ca=false;
+    for(;i<f.length;i++)if(f[i].tag===0xa3)kids(b,node(b,f[i].s)).forEach(x=>{
+      const p=kids(b,x),id=oid(b,p[0]),v=p[p.length-1];
+      if(id==="2.5.29.17")kids(b,node(b,v.s)).forEach(g=>{
+        if(g.tag===0x82)san.push(text(b,g));
+        else if(g.tag===0x87){const u=b.subarray(g.s,g.e);san.push(u.length===4?[...u].join("."):u.length===16?ip6(u):"");}});
+      else if(id==="2.5.29.19"){const q=kids(b,node(b,v.s));ca=!!(q[0]&&q[0].tag===1&&b[q[0].s]);}
+    });
+    let s0=serial.s;while(s0<serial.e-1&&b[s0]===0)s0++;
+    const sn=san.filter(Boolean),cn=subject["2.5.4.3"]||sn[0]||subject["2.5.4.10"]||"";
+    if(!cn)throw new Error("cn");
+    return {cn,o:subject["2.5.4.10"]||"",san:sn.length?sn:[cn],emisor:issuer["2.5.4.3"]||issuer["2.5.4.10"]||"",
+      desde:time(b,val[0]),hasta:time(b,val[1]),serie:hexs(b,s0,serial.e),clave:key(b,spki),ca};
+  }
+  async function sha256(der){try{return hexs(new Uint8Array(await crypto.subtle.digest("SHA-256",der)),0,32);}catch(e){return "";}}
+  async function read(list){const ok=[];let bad=0;for(const d of list){try{const p=parse(d);p.huella=await sha256(d);ok.push(p);}catch(e){bad++;}}return {ok,bad};}
+  function peek(txt){const ok=[];let bad=0;blocks(txt).forEach(d=>{try{ok.push(parse(d));}catch(e){bad++;}});return {ok,bad};}
+  return {blocks,parse,read,peek};
+})();
+
+/* ---------- archivos y arrastrar ---------- */
+function pickFile(accept,multi){const f=$("#file");f.accept=accept;f.multiple=!!multi;f.value="";f.onchange=()=>handleFiles([...f.files]);f.click();}
+async function handleFiles(files){
+  const ders=[];let skip=0;
+  for(const f of files){
+    if(f.size>2e6){skip++;continue;}
+    if(/\.json$/i.test(f.name)){importJSON(await f.text(),f.name);return;}
+    const b=new Uint8Array(await f.arrayBuffer());
+    if(b[0]===0x30)ders.push(b);
+    else{const bl=X509.blocks(new TextDecoder().decode(b));if(bl.length)ders.push(...bl);else skip++;}
+  }
+  if(!ders.length){toast(L("No se ha encontrado ningún certificado en ese archivo","No certificate found in that file"));return;}
+  closeModal();const r=await X509.read(ders);r.bad+=skip;applyPem(r);
+}
+function importJSON(txt,name){
+  let d=null;try{d=parseDB(JSON.parse(txt));}catch(e){}
+  if(!d){toast(L("Ese archivo no es una copia de CertScope","That file isn't a CertScope backup"));return;}
+  if(!confirm(L(`Se sustituirán los datos actuales por los de «${name}»: ${d.certs.length} certificados y ${d.doms.length} dominios.\nSe puede deshacer con Ctrl+Z. ¿Seguir?`,
+    `The current data will be replaced with «${name}»: ${d.certs.length} certificates and ${d.doms.length} domains.\nYou can undo it with Ctrl+Z. Continue?`)))return;
+  DB.certs=d.certs;DB.doms=d.doms;DB.log=d.log;DB.cfg=d.cfg;logAdd("imp",name,L(`${d.certs.length} certificados, ${d.doms.length} dominios`,`${d.certs.length} certificates, ${d.doms.length} domains`));
+  G={g:null,s:null};q="";$("#filter").value="";FL=null;SEL={k:null,id:null};save();closeModal();render();toastUndo(L("Copia importada","Backup imported"));
+}
+addEventListener("dragover",e=>{e.preventDefault();});
+addEventListener("drop",e=>{e.preventDefault();const f=[...(e.dataTransfer&&e.dataTransfer.files||[])];if(f.length)handleFiles(f);});
+
+/* ---------- exportar ---------- */
+function dl(blob,name){
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.style.display="none";
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},8000);return true;}catch(err){return false;}
+}
+// muestra el resultado para poder guardarlo a mano si el navegador bloquea la descarga
+function deliver(blob,name,text){
+  dl(blob,name);
+  const url=URL.createObjectURL(blob);
+  openModal(`<h3>${esc(name)}</h3>
+  <div class="body"><textarea class="in" id="sv_txt" rows="10" spellcheck="false"></textarea>
+    <div class="hint">${L("Debería haberse descargado ya. Si no aparece nada (algunos navegadores bloquean las descargas cuando el HTML se abre desde una carpeta local), usa los botones de abajo.","It should have downloaded already. If nothing appears (some browsers block downloads when the HTML is opened from a local folder), use the buttons below.")}</div></div>
+  <div class="foot"><button class="b" id="sv_copy">${ico("copy")}${L("Copiar todo","Copy all")}</button><button class="b" id="sv_open">${L("Abrir en pestaña nueva","Open in new tab")}</button><span class="sp"></span>
+    <button class="b" id="sv_close">${L("Cerrar","Close")}</button><button class="b pri" id="sv_dl">${ico("upload")}${L("Descargar otra vez","Download again")}</button></div>`,true);
+  $("#sv_txt").value=text||"";
+  $("#sv_dl").onclick=()=>dl(blob,name);
+  $("#sv_open").onclick=()=>{const w=window.open(url,"_blank");if(!w)toast(L("El navegador ha bloqueado la ventana nueva","The browser blocked the new window"));};
+  $("#sv_close").onclick=()=>{URL.revokeObjectURL(url);closeModal();};
+  $("#sv_copy").onclick=()=>{const t=$("#sv_txt");t.select();try{document.execCommand("copy");toast(L("Copiado al portapapeles","Copied to clipboard"));}catch(err){toast(L("Selecciona el texto y copia con Ctrl+C","Select the text and copy with Ctrl+C"));}};
+}
+const csvQ=v=>{if(typeof v==="number")return String(v);let t=String(v==null?"":v);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';};   // evita formulas al abrirlo en Excel
+function expCSV(){
+  const H=[["Tipo","Type"],["Nombre","Name"],["SAN","SAN"],["Emisor o registrador","Issuer or registrar"],["Desde","From"],["Vence","Expires"],["Días","Days"],["Estado","Status"],
+    ["Servidor","Server"],["Servicio","Service"],["Entorno","Environment"],["Cliente","Client"],["Responsable","Owner"],["Renovación automática","Auto-renewal"],
+    ["Clave","Key"],["Nº de serie","Serial number"],["SHA-256","SHA-256"],["Notas","Notes"]].map(x=>L(...x));
+  const yes=b=>b?L("Sí","Yes"):"No",one=s=>s.replace(/\r?\n/g," ");
+  const rows=[...DB.certs.map(c=>{const s=st(c,"cert");return [L("Certificado","Certificate"),c.cn,c.san.join(" "),c.emisor,fdate(c.desde),fdate(c.hasta),s.d==null?"":s.d,lvlN(s.lvl),
+      c.servidor,c.servicio,c.entorno,c.cliente,c.responsable,yes(c.auto),c.clave,c.serie,c.huella,one(c.notas)];}),
+    ...DB.doms.map(d=>{const s=st(d,"dom");return [L("Dominio","Domain"),d.nombre,"",d.registrador,"",fdate(d.hasta),s.d==null?"":s.d,lvlN(s.lvl),"","","",d.cliente,d.responsable,yes(d.auto),"","","",one(d.notas)];})];
+  const txt="\ufeff"+[H,...rows].map(r=>r.map(csvQ).join(";")).join("\r\n");
+  deliver(new Blob([txt],{type:"text/csv;charset=utf-8"}),"certscope-"+todayIso()+".csv",txt);
+}
+function expJSON(){save();const j=JSON.stringify(DB,null,2);deliver(new Blob([j],{type:"application/json"}),"certscope-"+todayIso()+".json",j);}
+function expPDF(){
+  const ev=events(),n=l=>ev.filter(e=>e.lvl===l).length,lv=l=>l==="bad"?"s-bad":l==="warn"?"s-warn":"",emp=DB.cfg.empresa;
+  const urg=ev.filter(e=>e.lvl==="bad"||e.lvl==="warn"),yes=b=>b?L("Sí","Yes"):"—";
+  const certs=DB.certs.slice().sort((a,b)=>(a.hasta||"9999").localeCompare(b.hasta||"9999"));
+  const doms=DB.doms.slice().sort((a,b)=>(a.hasta||"9999").localeCompare(b.hasta||"9999"));
+  const auto=[...DB.certs,...DB.doms].filter(o=>o.auto).length;
+  let h=`<h1>${L("Certificados y dominios","Certificates and domains")}${emp?" — "+esc(emp):""}</h1>
+  <div class="meta">${L("Generado el","Generated on")} ${new Date().toLocaleString(L("es-ES","en-GB"))} ${L("con CertScope","with CertScope")} · ${DB.certs.length} ${L("certificados","certificates")} · ${DB.doms.length} ${L("dominios","domains")} · ${DB.cfg.aviso?L(`aviso ${DB.cfg.aviso} días antes`,`${DB.cfg.aviso}-day warning`):L("aviso automático según la vida del certificado","automatic warning based on certificate lifetime")}</div>
+  <div class="kp"><div>${L("Vencidos","Expired")}<b>${n("bad")}</b></div><div>${L("En aviso","Due soon")}<b>${n("warn")}</b></div><div>${L("Al día","OK")}<b>${n("ok")}</b></div><div>${L("Renovación automática","Auto-renewal")}<b>${auto} / ${DB.certs.length+DB.doms.length}</b></div></div>
+  <h2>${L("Qué hay que renovar","What needs renewing")}</h2>${urg.length?`<table><tr><th>${L("Vence","Expires")}</th><th class="num">${L("Días","Days")}</th><th>${L("Tipo","Type")}</th><th>${L("Nombre","Name")}</th><th>${L("Dónde","Where")}</th><th>${L("Responsable","Owner")}</th><th>Auto</th></tr>
+    ${urg.map(e=>{const o=e.o;return `<tr><td class="nw ${lv(e.lvl)}">${fdate(e.iso)}</td><td class="num ${lv(e.lvl)}">${e.d}</td><td>${L(...KIND[e.k])}</td><td>${esc(nm(o))}</td><td>${esc(e.k==="cert"?[o.servidor,o.servicio].filter(Boolean).join(" · "):o.registrador)}</td><td>${esc(o.responsable)}</td><td>${yes(o.auto)}</td></tr>`;}).join("")}</table>`:`<p>${L("Nada vencido ni en aviso.","Nothing expired or due soon.")}</p>`}
+  <h2>${L("Certificados","Certificates")}</h2>${certs.length?`<table><tr><th>${L("Vence","Expires")}</th><th>${L("Nombre","Name")}</th><th>SAN</th><th>${L("Emisor","Issuer")}</th><th>${L("Instalado en","Installed on")}</th><th>${L("Entorno","Environment")}</th><th>${L("Cliente","Client")}</th><th>${L("Responsable","Owner")}</th><th>Auto</th></tr>
+    ${certs.map(c=>{const s=st(c,"cert");return `<tr><td class="nw ${lv(s.lvl)}">${fdate(c.hasta)}</td><td>${esc(c.cn)}</td><td>${esc(c.san.filter(x=>x!==c.cn).join(", "))}</td><td>${esc(c.emisor)}</td><td>${esc([c.servidor,c.servicio].filter(Boolean).join(" · "))}</td><td>${esc(c.entorno)}</td><td>${esc(c.cliente)}</td><td>${esc(c.responsable)}</td><td>${yes(c.auto)}</td></tr>`;}).join("")}</table>`:`<p>${L("Sin certificados.","No certificates.")}</p>`}
+  <h2>${L("Dominios","Domains")}</h2>${doms.length?`<table><tr><th>${L("Vence","Expires")}</th><th>${L("Dominio","Domain")}</th><th>${L("Registrador","Registrar")}</th><th>${L("Cliente","Client")}</th><th>${L("Responsable","Owner")}</th><th>Auto</th></tr>
+    ${doms.map(d=>{const s=st(d,"dom");return `<tr><td class="nw ${lv(s.lvl)}">${fdate(d.hasta)}</td><td>${esc(d.nombre)}</td><td>${esc(d.registrador)}</td><td>${esc(d.cliente)}</td><td>${esc(d.responsable)}</td><td>${yes(d.auto)}</td></tr>`;}).join("")}</table>`:`<p>${L("Sin dominios.","No domains.")}</p>`}`;
+  $("#print").innerHTML=h;
+  setTimeout(()=>{window.print();toast(L("Elige «Guardar como PDF» en el diálogo","Choose «Save as PDF» in the dialog"));},300);
+}
+// calendario: un evento por aviso de cada vencimiento futuro (RFC 5545)
+const icsTxt=s=>String(s==null?"":s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+function icsFold(line){   // lineas de 75 bytes como pide el RFC 5545, sin partir caracteres UTF-8
+  const enc=new TextEncoder();if(enc.encode(line).length<=75)return line;
+  const out=[];let cur="",n=0;
+  for(const ch of line){const b=enc.encode(ch).length;if(n+b>75){out.push(cur);cur=" ";n=1;}cur+=ch;n+=b;}
+  out.push(cur);return out.join("\r\n");
+}
+const icsDay=iso=>iso.replace(/-/g,"");
+// offs: "a" = el aviso de cada uno; un numero = N dias antes
+function icsPlan(offs,evs){
+  const out=[],seen=new Set(),t=todayIso();
+  evs.forEach(e=>offs.forEach(o=>{const n=o==="a"?e.av:o,k=e.o.id+"|"+n;if(seen.has(k))return;seen.add(k);
+    const iso=addD(e.iso,-n);if(iso>=t)out.push({e,n,iso});}));
+  return out.sort((x,y)=>x.iso<y.iso?-1:x.iso>y.iso?1:0);
+}
+function icsBuild(plan){
+  const now=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const L1=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CertScope//Vencimientos//"+(I18N.lang==="en"?"EN":"ES"),"CALSCALE:GREGORIAN","METHOD:PUBLISH",
+    "X-WR-CALNAME:"+icsTxt(L("CertScope — vencimientos","CertScope — expiry dates")+(DB.cfg.empresa?" · "+DB.cfg.empresa:""))];
+  plan.forEach(({e,n,iso})=>{
+    const o=e.o,kind=L(...KIND[e.k]);
+    const sum=n?L(`${kind} ${nm(o)}: vence en ${nd(n)} (${fdate(e.iso)})`,`${kind} ${nm(o)}: expires in ${nd(n)} (${fdate(e.iso)})`)
+               :L(`${kind} ${nm(o)}: vence hoy`,`${kind} ${nm(o)}: expires today`);
+    const desc=(e.k==="cert"?[
+      (o.san||[]).length>1?"SAN: "+o.san.join(", "):"",
+      o.emisor?L("Emisor: ","Issuer: ")+o.emisor:"",
+      o.servidor||o.servicio?L("Instalado en: ","Installed on: ")+[o.servidor,o.servicio].filter(Boolean).join(" · "):"",
+      o.serie?L("Nº de serie: ","Serial: ")+o.serie:""]:[o.registrador?L("Registrador: ","Registrar: ")+o.registrador:""]).concat(
+      o.cliente?L("Cliente: ","Client: ")+o.cliente:"",o.responsable?L("Responsable: ","Owner: ")+o.responsable:"",
+      L("Renovación: ","Renewal: ")+(o.auto?L("automática","automatic"):"manual"),L("Vence el ","Expires on ")+fdate(e.iso)).filter(Boolean)
+      .concat("",L("Generado con CertScope el ","Generated with CertScope on ")+fdate(todayIso()));
+    L1.push("BEGIN:VEVENT","UID:certscope-"+o.id+"-"+icsDay(e.iso)+"-"+n+"@certscope","DTSTAMP:"+now,
+      "DTSTART;VALUE=DATE:"+icsDay(iso),"DTEND;VALUE=DATE:"+icsDay(addD(iso,1)),
+      "SUMMARY:"+icsTxt(sum),"DESCRIPTION:"+icsTxt(desc.join("\n")),"CATEGORIES:CertScope","TRANSP:TRANSPARENT",
+      "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsTxt(sum),"TRIGGER:-PT15H","END:VALARM","END:VEVENT");
+  });
+  L1.push("END:VCALENDAR");
+  return L1.map(icsFold).join("\r\n")+"\r\n";
+}
+function icsDialog(evs,title){
+  const opts=[...new Set([DB.cfg.aviso||"a",7,0])];
+  const lab=o=>o==="a"?L("Cuando empieza el aviso de cada uno (automático)","When each one's warning starts (automatic)"):o?L(nd(o)+" antes",nd(o)+" before"):L("El día que vence","On the expiry day");
+  openModal(`<h3>${L("Calendario de vencimientos (.ics)","Expiry calendar (.ics)")}${title?`<span class="tag">${esc(title)}</span>`:""}</h3>
+  <div class="body">
+    <div class="hint">${L("Crea un archivo de calendario con un evento por aviso. El aviso llega donde ya miras cada día: Outlook, Google Calendar o el móvil, sin instalar nada.",
+      "Creates a calendar file with one event per reminder, so the warning reaches the place you already look every day: Outlook, Google Calendar or your phone, without installing anything.")}</div>
+    <div class="fld"><label>${L("Qué avisos crear","Which reminders to create")}</label><div style="display:grid;gap:8px">
+      ${opts.map(o=>`<label class="chk"><input type="checkbox" data-off="${o}" checked> ${lab(o)}</label>`).join("")}</div></div>
+    <div class="hint" id="c_n"></div>
+    <div class="hint">${L("Cada evento ocupa el día entero, no te marca como ocupado y avisa el día anterior a las 9:00. Lo ya vencido no se incluye.<br><b>Outlook:</b> Archivo › Abrir y exportar › Importar o exportar. <b>Google Calendar:</b> Configuración › Importar y exportar. Consejo: impórtalo en un calendario aparte; cuando cambien las fechas, lo vacías y lo vuelves a importar.",
+      "Each event is all-day, doesn't mark you as busy and reminds you the day before at 9:00. What has already expired isn't included.<br><b>Outlook:</b> File › Open &amp; Export › Import/Export. <b>Google Calendar:</b> Settings › Import &amp; export. Tip: import it into a separate calendar; when dates change, empty it and import it again.")}</div>
+  </div>
+  <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cancelar","Cancel")}</button><button class="b pri" id="m_ok">${ico("cal")}${L("Descargar calendario","Download calendar")}</button></div>`);
+  const offs=()=>$$("#modal [data-off]").filter(x=>x.checked).map(x=>x.dataset.off==="a"?"a":+x.dataset.off);
+  const upd=()=>{const p=icsPlan(offs(),evs),n=new Set(p.map(x=>x.e.o.id)).size;
+    $("#c_n").innerHTML=p.length?L(`Se crearán <b>${p.length}</b> eventos para <b>${n}</b> vencimientos.`,`<b>${p.length}</b> events will be created for <b>${n}</b> expiry dates.`)
+      :L("No hay ningún aviso pendiente con estas opciones.","There are no upcoming reminders with these options.");
+    $("#m_ok").disabled=!p.length;};
+  modal.onchange=upd;upd();
+  $("#m_ok").onclick=()=>{const p=icsPlan(offs(),evs);if(!p.length)return;closeModal();const t=icsBuild(p);
+    deliver(new Blob([t],{type:"text/calendar;charset=utf-8"}),L("vencimientos-","expiry-")+todayIso()+".ics",t);};
+}
+
+/* ---------- paleta Ctrl+K ---------- */
+const sel1=()=>selObj();
+const ACTS=[
+  {t:["Añadir certificado","Add certificate"],k:["N"],ic:"plus",kw:"nuevo alta new",run:()=>openCert(null,true)},
+  {t:["Pegar PEM o importar certificado","Paste PEM or import certificate"],k:["I"],ic:"paste",kw:"pem crt cer der importar import",run:openPem},
+  {t:["Añadir dominio","Add domain"],k:["D"],ic:"globe",kw:"dominio registrador domain registrar",run:()=>openDom(null,true)},
+  {t:["Anotar renovación del seleccionado","Record renewal of selected"],k:["R"],ic:"refresh",kw:"renovar renew",run:()=>{const o=sel1();if(o)openRenew(o,SEL.k);}},
+  {t:["Exportar informe (PDF)","Export report (PDF)"],ic:"file",kw:"pdf imprimir print informe report",run:expPDF},
+  {t:["Exportar a Excel (CSV)","Export to Excel (CSV)"],ic:"table",kw:"csv excel",run:expCSV},
+  {t:["Calendario de vencimientos (.ics)","Expiry calendar (.ics)"],ic:"cal",kw:"ics outlook google calendar calendario",run:()=>icsDialog(events())},
+  {t:["Copia de seguridad (JSON)","Backup (JSON)"],ic:"save",kw:"json backup copia exportar export",run:expJSON},
+  {t:["Importar copia (JSON)","Import backup (JSON)"],ic:"upload",kw:"json importar import restaurar restore",run:()=>pickFile(".json")},
+  {t:["Guardar en un archivo…","Save to a file…"],ic:"link",kw:"vincular archivo link file guardar save",run:linkFile},
+  {t:["Abrir un archivo de inventario…","Open an inventory file…"],ic:"file",kw:"abrir open archivo file",run:openFile},
+  {t:["Ajustes","Settings"],k:[","],ic:"gear",kw:"aviso periodo warning settings ajustes empresa",run:openCfg},
+  {t:["Cambiar tema claro u oscuro","Toggle light or dark theme"],ic:"moon",kw:"tema theme dark light oscuro claro",run:()=>{setTheme(DB.theme==="light"?"dark":"light");save();}},
+  {t:["English","Español"],ic:"globe",kw:"idioma language english español",run:()=>I18N.setLang(I18N.lang==="en"?"es":"en")},
+  {t:["Atajos de teclado","Keyboard shortcuts"],k:["?"],ic:"kbd",kw:"atajos keys shortcuts teclado keyboard",run:openKeys},
+  {t:["Novedades","What's new"],ic:"info",kw:"novedades news changelog version",run:openNews},
+  {t:["Mostrar u ocultar el registro","Show or hide the log"],k:["L"],ic:"file",kw:"registro log",run:()=>{DB.logOn=!DB.logOn;save();renderLog();}},
+  {t:["Deshacer","Undo"],k:["Ctrl","Z"],ic:"refresh",kw:"deshacer undo",run:undo},
+  {t:["Rehacer","Redo"],k:["Ctrl","Y"],ic:"refresh",kw:"rehacer redo",run:redo}];
+let PI=[],PS=0;
+function openPal(){closeMenu();$("#pal").classList.add("on");$("#q").value="";palRender();$("#q").focus();}
+function closePal(){$("#pal").classList.remove("on");}
+function palRender(){
+  const s=norm($("#q").value.trim()),it=[];
+  const ev=e=>({g:L("Vencen antes","Expiring first"),t:nm(e.o),sub:L(...KIND[e.k]),dot:e.lvl,r:e.d+" d",run:()=>select(e.k,e.o.id)});
+  const act=a=>({g:L("Acciones","Actions"),t:L(...a.t),ic:a.ic,k:a.k,run:a.run});
+  if(!s){events().slice(0,6).forEach(e=>it.push(ev(e)));ACTS.forEach(a=>it.push(act(a)));}
+  else{
+    DB.certs.filter(c=>norm([c.cn,...c.san,c.servidor,c.servicio,c.cliente,c.emisor,c.responsable].join(" ")).includes(s)).slice(0,8).forEach(c=>{const x=st(c,"cert");
+      it.push({g:L("Certificados","Certificates"),t:c.cn,sub:[c.servidor,c.servicio].filter(Boolean).join(" · "),dot:x.lvl,r:x.d==null?"":x.d+" d",run:()=>select("cert",c.id)});});
+    DB.doms.filter(d=>norm([d.nombre,d.registrador,d.cliente].join(" ")).includes(s)).slice(0,6).forEach(d=>{const x=st(d,"dom");
+      it.push({g:L("Dominios","Domains"),t:d.nombre,sub:d.registrador,dot:x.lvl,r:x.d==null?"":x.d+" d",run:()=>select("dom",d.id)});});
+    const go=new Map();
+    DB.certs.forEach(c=>{const g=gk(c);if(norm(g).includes(s))go.set("g|"+g,{t:g,sub:L(...GRPN[DB.grp]),run:()=>{G={g,s:null};DB.tab="cert";render();}});
+      if(c.servidor&&norm(c.servidor).includes(s))go.set("s|"+g+"|"+c.servidor,{t:c.servidor,sub:g,ic:"server",run:()=>{G={g,s:c.servidor};DB.tab="cert";render();}});});
+    [...go.values()].slice(0,6).forEach(x=>it.push({g:L("Ir a","Go to"),ic:x.ic||"layers",...x}));
+    ACTS.filter(a=>norm(a.t.join(" ")+" "+a.kw).includes(s)).forEach(a=>it.push(act(a)));
+  }
+  PI=it;PS=0;let g="",h="";
+  it.forEach((x,i)=>{if(x.g!==g){g=x.g;h+=`<div class="pg">${esc(g)}</div>`;}
+    h+=`<div class="pi${i?"":" on"}" data-i="${i}">${x.dot?`<span class="dot ${x.dot}"></span>`:ico(x.ic||"arrow")}<span class="t">${esc(x.t)}${x.sub?`<small>${esc(x.sub)}</small>`:""}</span>${x.r?`<span class="mono mut">${esc(x.r)}</span>`:""}${x.k?`<span class="k">${kb(...x.k)}</span>`:""}</div>`;});
+  $("#plist").innerHTML=h||`<div class="pnone">${L("Nada coincide","Nothing matches")}</div>`;
+}
+function palMove(d){if(!PI.length)return;PS=(PS+d+PI.length)%PI.length;$$("#plist .pi").forEach(x=>x.classList.toggle("on",+x.dataset.i===PS));const e=$(`#plist .pi[data-i="${PS}"]`);if(e)e.scrollIntoView({block:"nearest"});}
+function palRun(i){const x=PI[i];if(!x)return;closePal();x.run();}
+$("#q").addEventListener("input",palRender);
+$("#q").addEventListener("keydown",e=>{
+  if(e.key==="ArrowDown"){e.preventDefault();palMove(1);}else if(e.key==="ArrowUp"){e.preventDefault();palMove(-1);}
+  else if(e.key==="Enter"){e.preventDefault();palRun(PS);}else if(e.key==="Escape"){e.preventDefault();closePal();}
+});
+$("#plist").addEventListener("click",e=>{const x=e.target.closest(".pi");if(x)palRun(+x.dataset.i);});
+$("#pal").addEventListener("mousedown",e=>{if(e.target.id==="pal")closePal();});
+
+/* ---------- acciones ---------- */
+function select(k,id){
+  const vis=k==="cert"?certList():domList();
+  if(!vis.some(o=>o.id===id)){G={g:null,s:null};q="";$("#filter").value="";FL=null;}
+  SEL={k,id};if(DB.tab!=="cal")DB.tab=k;
+  render();const r=$(`#view [data-id="${id}"]`);if(r)r.scrollIntoView({block:"nearest"});
+}
+function openSel(){const o=selObj();if(o)SEL.k==="cert"?openCert(o):openDom(o);}
+function copyNames(){
+  const o=selObj();if(!o)return;const t=SEL.k==="cert"?[...new Set([o.cn,...o.san])].join("\n"):o.nombre;
+  const done=()=>toast(L("Copiado: ","Copied: ")+t.split("\n").length+L(" nombre(s)"," name(s)"));
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>fallback());else fallback();
+  function fallback(){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");done();}catch(e){}a.remove();}
+}
+function doAct(a){
+  const o=selObj();
+  switch(a){
+    case "pem":return openPem();
+    case "add":return openCert(null,true);
+    case "dom":return openDom(null,true);
+    case "seed":{const s=seed();DB.certs=s.certs;DB.doms=s.doms;DB.log=s.log;save();render();return toastUndo(L("Datos de ejemplo cargados","Sample data loaded"));}
+    case "clear":G={g:null,s:null};q="";$("#filter").value="";FL=null;return render();
+    case "ics":return icsDialog(calList());
+    case "renew":return o&&openRenew(o,SEL.k);
+    case "edit":return openSel();
+    case "copy":return copyNames();
+    case "ics1":return o&&icsDialog(events().filter(e=>e.o===o),nm(o));
+  }
+}
+function move(d){
+  const r=$$("#view [data-id]");if(!r.length)return;
+  let i=r.findIndex(x=>x.dataset.id===SEL.id&&x.dataset.k===SEL.k);i=i<0?0:Math.max(0,Math.min(r.length-1,i+d));
+  SEL={k:r[i].dataset.k,id:r[i].dataset.id};markSel();renderInsp();r[i].scrollIntoView({block:"nearest"});
+}
+const setTab=t=>{DB.tab=t;save();render();};
+function setTheme(t){
+  DB.theme=t==="light"?"light":"dark";document.documentElement.dataset.theme=DB.theme;
+  $("#theme use").setAttribute("href",DB.theme==="light"?"#moon":"#sun");
+  $("#theme").title=DB.theme==="light"?L("Tema oscuro","Dark theme"):L("Tema claro","Light theme");
+}
+const expMenu=$("#expMenu");
+function closeMenu(){expMenu.classList.remove("on");}
+$("#expBtn").addEventListener("click",e=>{e.stopPropagation();if(expMenu.classList.contains("on")){closeMenu();return;}
+  const r=e.currentTarget.getBoundingClientRect();expMenu.style.top=(r.bottom+4)+"px";expMenu.style.right=Math.max(8,innerWidth-r.right)+"px";expMenu.classList.add("on");});
+addEventListener("mousedown",e=>{if(!e.target.closest("#expMenu,#expBtn"))closeMenu();});
+expMenu.addEventListener("click",e=>{const b=e.target.closest("[data-exp]");if(!b)return;closeMenu();
+  ({pdf:expPDF,csv:expCSV,ics:()=>icsDialog(events()),json:expJSON,imp:()=>pickFile(".json"),file:linkFile})[b.dataset.exp]();});
+$("#addBtn").onclick=()=>openCert(null,true);
+$("#pemBtn").onclick=openPem;
+$("#cmdk").onclick=openPal;
+$("#cfgBtn").onclick=openCfg;
+$("#ver").onclick=openNews;
+$("#savest").onclick=linkFile;
+$("#theme").onclick=()=>{setTheme(DB.theme==="light"?"dark":"light");save();};
+$("#lang").onclick=e=>{const b=e.target.closest("[data-l]");if(b&&b.dataset.l!==I18N.lang)I18N.setLang(b.dataset.l);};
+$("#logT").onclick=()=>{DB.logOn=!DB.logOn;save();renderLog();};
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)setTab(b.dataset.tab);});
+$("#filter").addEventListener("input",e=>{q=e.target.value;render();});
+$("#stats").addEventListener("click",e=>{const b=e.target.closest("[data-fl]");if(!b)return;FL=FL===b.dataset.fl?null:b.dataset.fl;if(DB.tab==="log")DB.tab="cert";render();});
+$("#fresh").addEventListener("click",e=>{
+  const o=e.target.closest("[data-fo]");if(o){const [k,id]=o.dataset.fo.split("|");select(k,id);return;}
+  if(e.target.closest("#freshOk")){markSeen();FRESH=null;render();}
+});
+$("#tree").addEventListener("click",e=>{
+  const g=e.target.closest("[data-grp]");if(g){DB.grp=g.dataset.grp;G={g:null,s:null};FOLD.clear();save();render();return;}
+  if(e.target.closest("#addDom")){openDom(null,true);return;}
+  const f=e.target.closest("[data-fold]");if(f){const k=f.closest(".tn").dataset.g;FOLD.has(k)?FOLD.delete(k):FOLD.add(k);renderTree();return;}
+  const n=e.target.closest(".tn[data-g]");if(n){G={g:n.dataset.g||null,s:n.dataset.s||null};if(DB.tab!=="cert"&&DB.tab!=="cal")DB.tab="cert";render();return;}
+  const d=e.target.closest("[data-dom]");if(d)select("dom",d.dataset.dom);
+});
+$("#view").addEventListener("click",e=>{
+  const h=e.target.closest("th[data-sort]");if(h){const k=DB.tab,f=h.dataset.sort;SORT[k]=[f,SORT[k][0]===f?-SORT[k][1]:1];renderView();return;}
+  const a=e.target.closest("[data-act]");if(a){doAct(a.dataset.act);return;}
+  const r=e.target.closest("[data-id]");if(!r)return;
+  SEL={k:r.dataset.k,id:r.dataset.id};
+  if(innerWidth<=1180){openSel();return;}   // sin inspector a la vista: se abre la ficha
+  markSel();renderInsp();
+});
+$("#view").addEventListener("dblclick",e=>{const r=e.target.closest("[data-id]");if(r){SEL={k:r.dataset.k,id:r.dataset.id};openSel();}});
+$("#insp").addEventListener("click",e=>{
+  const s=e.target.closest("[data-sel]");if(s){const [k,id]=s.dataset.sel.split("|");select(k,id);return;}
+  const a=e.target.closest("[data-act]");if(a)doAct(a.dataset.act);
+});
+document.addEventListener("keydown",e=>{
+  const k=e.key,ctrl=e.ctrlKey||e.metaKey,tg=e.target,inField=/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName);
+  if(ctrl&&k.toLowerCase()==="k"){e.preventDefault();if(veil.classList.contains("on"))return;$("#pal").classList.contains("on")?closePal():openPal();return;}
+  if(veil.classList.contains("on")){
+    if(k==="Escape"){e.preventDefault();tryClose();}
+    else if(k==="Enter"&&(ctrl||tg.tagName==="INPUT"&&!/checkbox|radio/.test(tg.type))){const b=$("#m_ok");if(b&&!b.disabled){e.preventDefault();b.click();}}
+    return;
+  }
+  if($("#pal").classList.contains("on"))return;
+  if(k==="Escape"&&expMenu.classList.contains("on")){closeMenu();return;}
+  if(ctrl&&k.toLowerCase()==="f"){e.preventDefault();$("#filter").focus();$("#filter").select();return;}
+  if(inField){if(k==="Escape"||(k==="Enter"&&tg.id==="filter"))tg.blur();return;}
+  if(ctrl&&!e.shiftKey&&k.toLowerCase()==="z"){e.preventDefault();undo();return;}
+  if(ctrl&&(k.toLowerCase()==="y"||e.shiftKey&&k.toLowerCase()==="z")){e.preventDefault();redo();return;}
+  if(ctrl||e.altKey)return;
+  const run={"/":()=>{$("#filter").focus();},n:()=>openCert(null,true),i:openPem,d:()=>openDom(null,true),j:()=>move(1),ArrowDown:()=>move(1),k:()=>move(-1),ArrowUp:()=>move(-1),
+    Enter:openSel,e:openSel,r:()=>doAct("renew"),c:copyNames,l:()=>{DB.logOn=!DB.logOn;save();renderLog();},"?":openKeys,",":openCfg,
+    1:()=>setTab("cert"),2:()=>setTab("dom"),3:()=>setTab("cal"),4:()=>setTab("log"),
+    Escape:()=>{G={g:null,s:null};q="";$("#filter").value="";FL=null;render();}}[k.length===1?k.toLowerCase():k];
+  if(run){e.preventDefault();run();}
+});
+
+/* ---------- comprobacion automatica (abrir con #selftest) ---------- */
+async function selftest(){
+  let n=0;const f=[],ok=(c,m)=>{n++;if(!c)f.push(m);};
+  const EC=`-----BEGIN CERTIFICATE-----
+MIICEjCCAbmgAwIBAgIUSDsUNzYsuyKgvns8LUY0p28E4YkwCgYIKoZIzj0EAwIw
+QzELMAkGA1UEBhMCRVMxFTATBgNVBAoMDFBydWViYSBTY29wZTEdMBsGA1UEAwwU
+d3d3LmVqZW1wbG8tc2NvcGUuZXMwHhcNMjYxMDIyMTk1MTEyWhcNMjcwMTIwMTk1
+MTEyWjBDMQswCQYDVQQGEwJFUzEVMBMGA1UECgwMUHJ1ZWJhIFNjb3BlMR0wGwYD
+VQQDDBR3d3cuZWplbXBsby1zY29wZS5lczBZMBMGByqGSM49AgEGCCqGSM49AwEH
+A0IABNF3f3u9u6Eic40ja0SPiHSYBjuL0QF3Iu0B6i1gCi83x4XETbVJ8ciV9fQY
+YdhaKrwyqOqPXxLY9+Bw0L6vJ8+jgYowgYcwHQYDVR0OBBYEFNqa7eXV9I8TBU0O
+Z62u6KOpUq/2MB8GA1UdIwQYMBaAFNqa7eXV9I8TBU0OZ62u6KOpUq/2MDcGA1Ud
+EQQwMC6CFHd3dy5lamVtcGxvLXNjb3BlLmVzghBlamVtcGxvLXNjb3BlLmVzhwTA
+AAIKMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDRwAwRAIgCWxVZuAzIYJSVegO
+whiyrr8p72/2JrY/1gcr5oqmBIwCIFUdVEZ2AiKvleLHvecxjT6tdkSI9BEmmFQL
++r1yhI2F
+-----END CERTIFICATE-----`;
+  const RSA=`-----BEGIN CERTIFICATE-----
+MIIDWDCCAkCgAwIBAgIUHERxQOHmlutmzSRkV+7Dub5DkyQwDQYJKoZIhvcNAQEL
+BQAwRDELMAkGA1UEBhMCRVMxGDAWBgNVBAoMD8ORYW5kw7ogUHJ1ZWJhczEbMBkG
+A1UEAwwSaW50cmFuZXQubGFiLmxvY2FsMCAXDTI2MDMwMTAwMDAwMFoYDzIwNTEw
+MzE1MTIwMDAwWjBEMQswCQYDVQQGEwJFUzEYMBYGA1UECgwPw5FhbmTDuiBQcnVl
+YmFzMRswGQYDVQQDDBJpbnRyYW5ldC5sYWIubG9jYWwwggEiMA0GCSqGSIb3DQEB
+AQUAA4IBDwAwggEKAoIBAQDe9G/n2hJJeVT3huTokXb5NfEqa5h9mgBSDJasBsgP
+qaDmpnjeyU+8o7YuEHJyKdfKfdsqSV+lxjh/vahC/hoDYksH7Wxgt4TQIoO8BkbM
+18vd/tjBaPQnIMMFhij2XUPbrvRHZH9o+kI5dy9dAgA0OBLINH250x/wfqHtKcFp
+NC+kijkgqEdQYV27u7w1JXn4S1Rstx8JMooDY7dYj1QUNH/z+hx/B27IulGS9hop
+Nd0UjB/F2rbW6cl5Hbtg0FHB7pdckTCS9l0F92yrtlDH1C+55G4X3DtbcwSyGhKa
+JODLOkUMjZp+B/WPCDqYIUbmCCsHeYnpgbBjcYxeCABNAgMBAAGjQDA+MB0GA1Ud
+EQQWMBSCEmludHJhbmV0LmxhYi5sb2NhbDAdBgNVHQ4EFgQUABRywqgUUegNKDjX
+A+oA45w8WTIwDQYJKoZIhvcNAQELBQADggEBAIbO3u5eATjB3wJM+TqFDzUG9qip
+Lfx/ZZNWDYL645defgRnaFvTnUiYciAkeTdwnOr1z9241B75GWgOqJxlYqy2z2Rl
+q/9beVyLOO7+fYRXtG+kzMhe8gP9ZxcKUjx0VJQPnmcajID3cSjCkIbtah91YMQb
+0/MhVtD5grxIxAy97ItsaVh/CQcRDTeZVIOlDlvQ1/C1zBbJF5NjkkVJU4hJFj32
+Gn08MyY02pMlgMZtthGqYRNCvhAcXzPStry5674S0qb5UvrhysLEm65RGeCsK6Q6
+Ubg/SYQZ3bGXcyuchSpRFrtWEYeCOQlQwadjCIG94W8lCBALGA85l6PeJBE=
+-----END CERTIFICATE-----`;
+  try{
+    const e=(await X509.read(X509.blocks(EC))).ok[0]||{};
+    ok(e.cn==="www.ejemplo-scope.es","ec.cn");ok(e.o==="Prueba Scope","ec.o");ok(e.emisor==="www.ejemplo-scope.es","ec.emisor");
+    ok((e.san||[]).join(",")==="www.ejemplo-scope.es,ejemplo-scope.es,192.0.2.10","ec.san");
+    ok(e.desde==="2026-10-22"&&e.hasta==="2027-01-20","ec.fechas");
+    ok(e.serie==="48:3B:14:37:36:2C:BB:22:A0:BE:7B:3C:2D:46:34:A7:6F:04:E1:89","ec.serie");
+    ok(e.huella==="DB:A4:08:9F:C7:21:58:E0:0C:05:FB:B9:A4:CF:37:EA:F5:46:04:75:7B:74:E5:01:51:1A:7C:90:37:E1:6F:55","ec.sha256");
+    ok(e.clave==="EC P-256"&&e.ca===false,"ec.clave");
+    const r=(await X509.read(X509.blocks(RSA))).ok[0]||{};
+    ok(r.cn==="intranet.lab.local"&&r.o==="Ñandú Pruebas","rsa.nombre");ok(r.desde==="2026-03-01"&&r.hasta==="2051-03-15","rsa.fechas");
+    ok(r.serie==="1C:44:71:40:E1:E6:96:EB:66:CD:24:64:57:EE:C3:B9:BE:43:93:24","rsa.serie");
+    ok(r.huella==="5C:6A:53:5A:42:7E:77:1E:18:B3:7E:90:53:A0:7D:E1:B6:A9:AC:7E:B1:A8:31:FD:65:9A:6F:81:48:D2:3B:B9","rsa.sha256");
+    ok(r.clave==="RSA 2048","rsa.clave");
+    ok(X509.blocks(EC+"\n"+RSA).length===2,"cadena");
+    const bad=X509.peek("-----BEGIN CERTIFICATE-----\nMAMCAQA=\n-----END CERTIFICATE-----");ok(bad.ok.length===0&&bad.bad===1,"basura");
+    ok(X509.peek("hola").ok.length===0,"sin bloques");
+  }catch(err){f.push("x509:"+err.message);}
+  ok(avisoDe({desde:"2029-04-01",hasta:"2029-05-18"},"cert",0)===16,"aviso47");
+  ok(avisoDe({hasta:"2026-12-15"},"cert",0)===30,"aviso200");
+  ok(vida({hasta:"2029-06-01"})===47&&vida({hasta:"2027-08-01"})===100&&vida({hasta:"2027-06-01"})===200,"vida.cab");
+  ok(avisoDe({hasta:"2026-12-15"},"dom",0)===30&&avisoDe({hasta:"2026-12-15"},"cert",10)===10,"aviso.dom.fijo");
+  ok(raiz("*.clinicasoler.com")==="clinicasoler.com"&&raiz("sede.ayto.gob.es")==="ayto.gob.es"&&raiz("192.0.2.10")==="192.0.2.10","raiz");
+  ok(icsTxt("a,b;c\\d\ne")==="a\\,b\\;c\\\\d\\ne","ics.escape");
+  const line="DESCRIPTION:"+"ñandú ".repeat(20),fo=icsFold(line),parts=fo.split("\r\n"),enc=new TextEncoder();
+  ok(parts.length>1&&parts.every(x=>enc.encode(x).length<=75),"ics.fold75");
+  ok(parts.map((x,i)=>i?x.slice(1):x).join("")===line,"ics.fold.ida-vuelta");
+  const ev={o:{id:"t1",cn:"prueba.ejemplo.es",san:["prueba.ejemplo.es","a.ejemplo.es"],emisor:"R11",auto:false},k:"cert",iso:rd(40),d:40,av:16,lvl:"ok"};
+  const plan=icsPlan(["a",0],[ev]);
+  ok(plan.length===2&&plan[0].iso===rd(24)&&plan[1].iso===rd(40),"ics.plan");
+  ok(icsPlan([60],[ev]).length===0,"ics.plan.pasado");
+  const t=icsBuild(plan);
+  ok((t.match(/BEGIN:VEVENT/g)||[]).length===2,"ics.eventos");ok(!/[^\r]\n/.test(t),"ics.crlf");
+  ok(t.includes("DTSTART;VALUE=DATE:"+icsDay(rd(24)))&&t.includes("DTEND;VALUE=DATE:"+icsDay(rd(25))),"ics.fechas");
+  ok(t.endsWith("END:VCALENDAR\r\n")&&t.split("\r\n").every(x=>enc.encode(x).length<=75),"ics.fin");
+  ok(csvQ("=1+1")==="\"'=1+1\""&&csvQ(-3)==="-3","csv");
+  ok(cleanCert({cn:""})===null&&cleanCert({cn:"a",desde:"2026-02-30"}).desde==="","limpieza");
+  ok((parseDB(JSON.parse(JSON.stringify(DB)))||{certs:[]}).certs.length===DB.certs.length,"json.ida-vuelta");
+  document.title=f.length?`CertScope selftest: FALLA ${f.length}/${n} ${f.join(",")}`:`CertScope selftest: OK ${n}`;
+  (f.length?console.error:console.log)(document.title);toast(document.title);
+}
+
+/* ---------- arranque ---------- */
+DB=load();
+setTheme(DB.theme);
+checkFresh();
+render();
+BOOTED=true;
+hData=dataKey();UNDO=[];REDO=[];
+try{localStorage.setItem(KEY+".t","1");localStorage.removeItem(KEY+".t");}catch(e){lsOK=false;}
+save();
+restoreHandle();
+$("#ver").textContent="v"+VERSION;
+try{const v=localStorage.getItem(KEY+".ver");if(v&&v!==VERSION)openNews();localStorage.setItem(KEY+".ver",VERSION);}catch(e){}
+if(location.hash==="#selftest")selftest();
+</script>
+</body>
+</html>
