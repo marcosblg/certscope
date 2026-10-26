@@ -21,7 +21,7 @@ Nothing to install or download: the link opens the tool with sample certificates
 ## What it does
 
 **At a glance**
-- On opening you see how many certificates are **expired**, **due soon** and **OK**, sorted by what expires first.
+- On opening, the **What expires** home view: how many are **expired**, **due soon** and **OK**, and the list of what needs renewing by urgency, each with a **Renew** button.
 - Tree by **environment**, **client** or **domain**, with each server below.
 - A card for each certificate: names (SAN), issuer, server and service it's installed on, owner, automatic or manual renewal, key, serial number and SHA-256 fingerprint.
 - If an **auto-renewing** certificate becomes due soon, it's flagged: the renewal job is probably failing.

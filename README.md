@@ -21,7 +21,7 @@ No hay que instalar ni descargar nada: el enlace abre la herramienta con certifi
 ## Qué hace
 
 **De un vistazo**
-- Al abrir ves cuántos certificados están **vencidos**, **en aviso** y **al día**, ordenados por lo que vence antes.
+- Al abrir, la portada **Qué caduca**: cuántos están **vencidos**, **en aviso** y **al día**, y la lista de lo que toca renovar por urgencia con su botón **Renovar**.
 - Árbol por **entorno**, **cliente** o **dominio**, con cada servidor debajo.
 - Ficha de cada certificado: nombres (SAN), emisor, servidor y servicio donde está instalado, responsable, renovación automática o manual, clave, nº de serie y huella SHA-256.
 - Si un certificado con **renovación automática** entra en aviso, te lo marca: la tarea de renovación probablemente está fallando.
