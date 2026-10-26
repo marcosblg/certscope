@@ -6,23 +6,27 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>CertScope — certificados TLS y dominios</title>
 <style>
-/* Guía visual Scope: neutra, bordes de 1 px; el color solo dice el estado (verde OK, ámbar en aviso, rojo vencido). */
+/* Guía visual Scope: azul noche como AssetScope, acento azul; el color dice el estado (verde OK, ámbar en aviso, rojo vencido). */
 :root{
-  --bg:#0d0e10; --side:#111214; --panel:#16171a; --raise:#1c1d21; --hover:#1f2024; --sel:#25262b;
-  --line:#232428; --line2:#2e3035;
-  --tx:#e8e8ea; --tx2:#a0a1a8; --tx3:#6c6d75;
-  --ok:#4cb782; --warn:#e8a93a; --bad:#eb5757;
-  --okbg:#4cb7821a; --warnbg:#e8a93a1c; --badbg:#eb57571c;
+  --bg:#0e131c; --side:#131a26; --panel:#1a2233; --raise:#212b40; --hover:#212b40; --sel:#28344d;
+  --line:#2a3650; --line2:#3a4866;
+  --tx:#eaf0fb; --tx2:#b3c1da; --tx3:#8797b5;
+  --acc:#59a9ff; --accbg:#16375c; --accbd:#3d7ab8;
+  --ok:#2fd07a; --warn:#ffb020; --bad:#ff5c6c;
+  --okbg:#2fd07a1a; --warnbg:#ffb0201f; --badbg:#ff5c6c1f; --warnbd:#ffb02088; --badbd:#ff5c6c88;
+  --sh:0 14px 40px -22px #000;
   --f:"Inter","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
   --m:"JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
   color-scheme:dark;
 }
 html[data-theme="light"]{
-  --bg:#fbfbfb; --side:#f4f4f5; --panel:#ffffff; --raise:#ffffff; --hover:#efeff1; --sel:#e7e7ea;
-  --line:#e4e4e7; --line2:#d4d4d8;
-  --tx:#18181b; --tx2:#52525b; --tx3:#8a8a93;
-  --ok:#1f8f5a; --warn:#b4760a; --bad:#cf3a3a;
-  --okbg:#1f8f5a14; --warnbg:#b4760a17; --badbg:#cf3a3a14;
+  --bg:#eaeef5; --side:#e2e8f1; --panel:#ffffff; --raise:#ffffff; --hover:#f1f4fa; --sel:#dceaff;
+  --line:#d3dbe7; --line2:#b9c6d8;
+  --tx:#111827; --tx2:#4a5772; --tx3:#6b7a94;
+  --acc:#1f6fd0; --accbg:#dceaff; --accbd:#7fb1ec;
+  --ok:#12a355; --warn:#b26a00; --bad:#c62b3c;
+  --okbg:#12a3551a; --warnbg:#b26a001a; --badbg:#c62b3c1a; --warnbd:#b26a0066; --badbd:#c62b3c66;
+  --sh:0 10px 30px -18px #7b88a0;
   color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -59,8 +63,8 @@ kbd{font:500 10.5px/1 var(--m);color:var(--tx3);border:1px solid var(--line2);bo
 .b{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border:1px solid var(--line2);border-radius:6px;color:var(--tx2);font-weight:500;white-space:nowrap;flex:0 0 auto}
 .b:hover{background:var(--hover);color:var(--tx)}
 .b:disabled{opacity:.45;cursor:default}
-.b.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}
-.b.pri:hover{opacity:.88;background:var(--tx);color:var(--bg)}
+.b.pri{background:var(--accbg);color:var(--acc);border-color:var(--accbd)}
+.b.pri:hover{opacity:.88;background:var(--accbg);color:var(--acc)}
 .b.pri kbd{background:transparent;color:inherit;border-color:currentColor;opacity:.55}
 .b.ic{width:26px;padding:0;justify-content:center}
 .b.sm{height:22px;padding:0 7px;font-size:12px}
@@ -120,7 +124,7 @@ kbd{font:500 10.5px/1 var(--m);color:var(--tx3);border:1px solid var(--line2);bo
 .tabs{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--line);align-items:flex-end;min-width:0}
 .tabs>button{display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;color:var(--tx3);font-weight:500;border-bottom:1.5px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .tabs>button:hover{color:var(--tx)}
-.tabs>button.on{color:var(--tx);border-color:var(--tx)}
+.tabs>button.on{color:var(--tx);border-color:var(--acc)}
 .tabs .n{font:11px var(--m);color:var(--tx3)}
 .tabs .tools{margin-left:auto;display:flex;gap:6px;align-items:center;padding-bottom:5px}
 .fwrap{display:flex;align-items:center;gap:6px;height:24px;width:220px;padding:0 4px 0 8px;border:1px solid var(--line2);border-radius:6px;color:var(--tx3)}
@@ -138,7 +142,7 @@ table.grid{width:100%;border-collapse:collapse;white-space:nowrap}
 .grid tbody tr{cursor:default}
 .grid tbody tr:hover td{background:var(--hover)}
 .grid tbody tr.on td{background:var(--sel)}
-.grid tbody tr.on td:first-child{box-shadow:inset 2px 0 var(--tx)}
+.grid tbody tr.on td:first-child{box-shadow:inset 2px 0 var(--acc)}
 .grid td.w18,.grid th.w18{width:18px;padding-right:0}
 td.cn{color:var(--tx)!important;font-weight:500;max-width:280px;overflow:hidden;text-overflow:ellipsis}
 td.cn .san{color:var(--tx3);font-weight:400;margin-left:6px;font-size:11.5px}
@@ -163,6 +167,36 @@ td.auto svg{width:13px;height:13px;vertical-align:-2px}
 .crow span{overflow:hidden;text-overflow:ellipsis}
 .crow .nm{color:var(--tx);font-weight:500}
 .crow .days{text-align:right}
+/* portada: qué caduca */
+.sum{padding:16px 18px 28px;max-width:1100px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:6px}
+.kpi{background:var(--panel);border:1.5px solid var(--line2);border-radius:12px;padding:13px 15px;text-align:left;display:flex;flex-direction:column;gap:5px;color:var(--tx);box-shadow:var(--sh);min-width:0}
+button.kpi:hover{border-color:var(--acc)}
+.kpi .lb{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:7px}
+.kpi .big{font:700 32px/1 var(--m)}
+.kpi small{font-size:11.5px;color:var(--tx3)}
+.kpi.bad{border-color:var(--badbd);background:linear-gradient(180deg,var(--badbg),transparent),var(--panel)}.kpi.bad .big{color:var(--bad)}
+.kpi.warn{border-color:var(--warnbd);background:linear-gradient(180deg,var(--warnbg),transparent),var(--panel)}.kpi.warn .big{color:var(--warn)}
+.kpi.ok .big{color:var(--ok)}
+.kpi.auto .big,.kpi.auto .lb svg{color:var(--tx3)}
+.kpi.auto.on{border-color:var(--warnbd)}.kpi.auto.on .big,.kpi.auto.on .lb svg{color:var(--warn)}
+.kpi.off{opacity:.45}
+.uh{margin:20px 0 8px;font-size:11.5px;font-weight:600;color:var(--tx2);letter-spacing:.4px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.urow{display:grid;grid-template-columns:10px 84px minmax(0,.9fr) minmax(0,1.5fr) auto auto;gap:14px;align-items:center;min-height:54px;padding:8px 12px 8px 14px;margin-bottom:6px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--line2);border-radius:10px;cursor:pointer}
+.urow:hover{border-color:var(--line2)}
+.urow.on{background:var(--sel)}
+.urow.bad{border-left-color:var(--bad)}.urow.warn{border-left-color:var(--warn)}.urow.ok{border-left-color:var(--ok)}
+.urow .dot{width:9px;height:9px}
+.urow.bad .dot{box-shadow:0 0 8px var(--bad)}
+.urow b{display:block;color:var(--tx);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.urow .un b{font-size:14px}
+.urow small{display:block;color:var(--tx3);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ud{color:var(--tx2)}
+.us{font:600 13px var(--m);white-space:nowrap;text-align:right}
+.af{color:var(--warn);margin-left:6px}
+.af svg{width:12px;height:12px;vertical-align:-2px;margin-right:3px}
+.allok{display:flex;align-items:center;gap:10px;margin-top:20px;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--tx2)}
+.allok svg{color:var(--ok);width:18px;height:18px}
 
 /* registro de cambios */
 #log{border-top:1px solid var(--line);background:var(--side);height:160px;display:grid;grid-template-rows:30px minmax(0,1fr)}
@@ -281,6 +315,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--tx);margin:0}
   body{grid-template-columns:0 minmax(0,1fr) 0}#tree{display:none}
   .crumb,#pemBtn span,#expBtn span,#addBtn span,#addBtn kbd,#pemBtn kbd,#bar .k,#avinfo,.stats{display:none}
   .cmdk{flex:1 1 auto}.fwrap{width:150px}.g2,.g3{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.urow{grid-template-columns:10px minmax(0,1fr) auto auto}.urow .ud,.urow .uw{display:none}
 }
 
 /* PDF */
@@ -375,6 +410,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--tx);margin:0}
   <div class="head"><div class="grow"><h1 id="h1"></h1><p id="hsub"></p></div><div class="stats" id="stats"></div></div>
   <div id="fresh"></div>
   <div class="tabs" id="tabs">
+    <button data-tab="sum"><svg class="i"><use href="#bell"/></svg>Qué caduca</button>
     <button data-tab="cert"><svg class="i"><use href="#cert"/></svg>Certificados <span class="n" id="nC"></span></button>
     <button data-tab="dom"><svg class="i"><use href="#globe"/></svg>Dominios <span class="n" id="nD"></span></button>
     <button data-tab="cal"><svg class="i"><use href="#cal"/></svg>Calendario</button>
@@ -450,6 +486,7 @@ const I18N=(()=>{
 "Dominios registrados": "Registered domains",
 "Añadir dominio (D)": "Add domain (D)",
 "Certificados": "Certificates",
+"Qué caduca": "What expires",
 "Dominios": "Domains",
 "Calendario": "Calendar",
 "Registro": "Log",
@@ -551,7 +588,7 @@ I18N.start();
 
 <script id="app">
 "use strict";
-const KEY="certscope.v1",VERSION="1.0";
+const KEY="certscope.v1",VERSION="1.1";
 const L=(es,en)=>I18N.lang==="en"?en:es;
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const str=x=>x==null?"":String(x).trim();
@@ -656,7 +693,7 @@ function parseDB(x){
   if(!x||typeof x!=="object"||!Array.isArray(x.certs))return null;
   const seen=new Set(),uniq=o=>{if(seen.has(o.id))o.id=nid("x");seen.add(o.id);return o;};
   const cfg=x.cfg&&typeof x.cfg==="object"?x.cfg:{};
-  return {v:1,app:"certscope",theme:x.theme==="light"?"light":"dark",tab:["cert","dom","cal","log"].includes(x.tab)?x.tab:"cert",
+  return {v:1,app:"certscope",theme:x.theme==="light"?"light":"dark",tab:["sum","cert","dom","cal","log"].includes(x.tab)?x.tab:"sum",
     grp:["env","cli","dom"].includes(x.grp)?x.grp:"env",logOn:x.logOn!==false,
     cfg:{aviso:Number.isInteger(cfg.aviso)&&cfg.aviso>0&&cfg.aviso<=365?cfg.aviso:0,empresa:t80(cfg.empresa,120)},
     certs:x.certs.map(cleanCert).filter(Boolean).map(uniq),
@@ -692,7 +729,7 @@ function seed(){
   return I18N.data({certs,doms,log});
 }
 function freshDB(withSeed){
-  const d={v:1,app:"certscope",theme:matchMedia("(prefers-color-scheme: light)").matches?"light":"dark",tab:"cert",grp:"env",logOn:true,
+  const d={v:1,app:"certscope",theme:matchMedia("(prefers-color-scheme: light)").matches?"light":"dark",tab:"sum",grp:"env",logOn:true,
     cfg:{aviso:0,empresa:""},certs:[],doms:[],log:[]};
   if(withSeed)Object.assign(d,seed());
   return d;
@@ -863,7 +900,8 @@ function renderTree(){
 }
 function renderHead(){
   const cs=certsG(),ds=domsG(),all=[...cs.map(c=>st(c,"cert").lvl),...ds.map(d=>st(d,"dom").lvl)];
-  $("#h1").textContent=G.s||G.g||L("Todos los certificados","All certificates");
+  $("#h1").textContent=G.s||G.g||(DB.tab==="sum"?L("Qué caduca","What expires"):L("Todos los certificados","All certificates"));
+  $("#stats").style.display=DB.tab==="sum"?"none":"";   // en la portada ya lo dicen las tarjetas
   $("#hsub").textContent=L(`${cs.length} certificados · ${ds.length} dominios · aviso ${DB.cfg.aviso?DB.cfg.aviso+" días antes":"automático"}`,
     `${cs.length} certificates · ${ds.length} domains · ${DB.cfg.aviso?DB.cfg.aviso+"-day":"automatic"} warning`);
   const n=l=>all.filter(x=>x===l).length;
@@ -880,14 +918,38 @@ function th(k,f,t,cls){const [sf,dir]=SORT[k],on=sf===f;
 const isNew=o=>FRESH&&FRESH.ids&&FRESH.ids.has(o.id)?`<i class="new">${L("NUEVO","NEW")}</i>`:"";
 function emptyBox(t,p,acts){return `<div class="empty"><h2>${t}</h2><p>${p}</p><div class="row">${acts}</div></div>`;}
 const btn=(act,icon,t,pri)=>`<button class="b${pri?" pri":""}" data-act="${act}">${ico(icon)}${t}</button>`;
+const noCerts=()=>emptyBox(L("Aún no hay certificados","No certificates yet"),
+  L("Pega el PEM de un certificado (o arrastra aquí un .pem, .crt o .cer) y se rellenan solos el nombre, los SAN, el emisor y las fechas. Se lee en el navegador: no sale de este equipo.",
+    "Paste a certificate's PEM (or drop a .pem, .crt or .cer file here) and the name, SANs, issuer and dates fill themselves in. It's read in the browser: it never leaves this computer."),
+  btn("pem","paste",L("Pegar PEM","Paste PEM"),1)+btn("add","plus",L("Añadir a mano","Add by hand"))+btn("seed","layers",L("Ver datos de ejemplo","Load sample data")));
+// portada: semáforo y lo que hay que renovar, por urgencia, con la acción a mano
+function sumView(){
+  const all=[...certsG().filter(hayC).map(o=>({o,k:"cert",s:st(o,"cert")})),...domsG().filter(hayD).map(o=>({o,k:"dom",s:st(o,"dom")}))];
+  const n=l=>all.filter(x=>x.s.lvl===l).length,fallo=all.filter(x=>x.o.auto&&(x.s.lvl==="warn"||x.s.lvl==="bad")).length;
+  const kp=(l,t,sub)=>`<button class="kpi ${l}${FL&&FL!==l?" off":""}" data-fl="${l}" title="${L("Filtrar por estado","Filter by status")}"><span class="lb"><span class="dot ${l}"></span>${t}</span><span class="big">${n(l)}</span><small>${sub}</small></button>`;
+  let h=`<div class="sum"><div class="kpis">${kp("bad",L("Vencido","Expired"),L("hay que renovarlo ya","renew it now"))}${kp("warn",L("En aviso","Due soon"),L("toca renovar en estos días","renew in the coming days"))}${kp("ok",L("Al día","OK"),L("nada que hacer","nothing to do"))}
+    <div class="kpi auto${fallo?" on":""}"><span class="lb">${ico("refresh")}${L("Renovación automática","Auto-renewal")}</span><span class="big">${fallo}</span><small>${fallo?L("no ha renovado: revisa certbot o win-acme","hasn't renewed: check certbot or win-acme"):L("todas renovando a tiempo","all renewing on time")}</small></div></div>`;
+  const list=all.filter(x=>x.s.lvl!=="none"&&(!FL||x.s.lvl===FL)&&(x.s.lvl!=="ok"||FL==="ok"||x.s.d<=90)).sort((a,b)=>a.s.d-b.s.d||nm(a.o).localeCompare(nm(b.o)));
+  [["bad",L("Vencido","Expired")],["warn",L("En aviso","Due soon")],["ok",FL==="ok"?L("Al día","OK"):L("Próximos 90 días","Next 90 days")]].forEach(([l,t])=>{
+    const g=list.filter(x=>x.s.lvl===l);if(!g.length)return;
+    h+=`<h4 class="uh"><span class="dot ${l}"></span>${t} · ${g.length}</h4>`+g.map(({o,k,s})=>{
+      const where=k==="cert"?[o.servidor,o.servicio].filter(Boolean).join(" · "):o.registrador,who=[o.responsable,o.cliente].filter(Boolean).join(" · ");
+      return `<div class="urow ${l}" data-k="${k}" data-id="${o.id}"><span class="dot ${l}"></span><span class="mono ud">${fdate(o.hasta)}</span>
+        <span class="uw"><b>${L(...KIND[k])}</b><small>${esc(where||"—")}</small></span>
+        <span class="un"><b>${esc(nm(o))}${isNew(o)}</b><small>${esc(who)}${o.auto&&l!=="ok"?`<span class="af">${ico("refresh")}${L("no se renovó solo","didn't auto-renew")}</span>`:""}</small></span>
+        <span class="us c-${l}">${stTxt(s)}</span><span class="ua">${btn("renew","refresh",L("Renovar","Renew"),l==="bad")}</span></div>`;}).join("");
+  });
+  if(!list.length)h+=`<div class="allok">${ico("check")}${FL?L("Nada con este estado.","Nothing with this status."):L("Todo al día: nada vence en los próximos 90 días.","All good: nothing expires in the next 90 days.")}</div>`;
+  return {h:h+"</div>",ids:list.map(x=>[x.k,x.o.id])};
+}
 function renderView(){
   const v=$("#view"),tab=DB.tab;let ids=[];
-  if(tab==="cert"){
+  if(tab==="sum"){
+    if(!DB.certs.length&&!DB.doms.length)v.innerHTML=noCerts();
+    else{const r=sumView();v.innerHTML=r.h;ids=r.ids;}
+  }else if(tab==="cert"){
     const list=certList();ids=list.map(c=>["cert",c.id]);
-    if(!DB.certs.length)v.innerHTML=emptyBox(L("Aún no hay certificados","No certificates yet"),
-      L("Pega el PEM de un certificado (o arrastra aquí un .pem, .crt o .cer) y se rellenan solos el nombre, los SAN, el emisor y las fechas. Se lee en el navegador: no sale de este equipo.",
-        "Paste a certificate's PEM (or drop a .pem, .crt or .cer file here) and the name, SANs, issuer and dates fill themselves in. It's read in the browser: it never leaves this computer."),
-      btn("pem","paste",L("Pegar PEM","Paste PEM"),1)+btn("add","plus",L("Añadir a mano","Add by hand"))+btn("seed","layers",L("Ver datos de ejemplo","Load sample data")));
+    if(!DB.certs.length)v.innerHTML=noCerts();
     else if(!list.length)v.innerHTML=emptyBox(L("Nada coincide","Nothing matches"),L("Ningún certificado cumple el filtro actual.","No certificate matches the current filter."),btn("clear","filter",L("Quitar filtros","Clear filters")));
     else v.innerHTML=`<table class="grid"><thead><tr><th class="w18"></th>${th("cert","cn",L("Nombre","Name"))}${th("cert","emisor",L("Emisor","Issuer"))}${th("cert","servidor",L("Instalado en","Installed on"))}${th("cert","responsable",L("Responsable","Owner"))}${th("cert","hasta",L("Vence","Expires"))}${th("cert","hasta",L("Quedan","Left"),"r")}${th("cert","auto","Auto")}</tr></thead><tbody>${
       list.map(c=>{const s=st(c,"cert"),x=c.san.filter(n=>n!==c.cn).length;
@@ -924,7 +986,7 @@ function logTable(list){
 }
 function renderLog(){
   const box=$("#log"),all=logAll();
-  box.style.display=DB.tab==="log"?"none":"";
+  box.style.display=DB.tab==="log"||DB.tab==="sum"?"none":"";
   box.classList.toggle("off",!DB.logOn);
   $("#logN").textContent=L(`${all.length} entradas`,`${all.length} entries`);
   $("#logTl").textContent=DB.logOn?L("Ocultar","Hide"):L("Mostrar","Show");
@@ -1154,12 +1216,15 @@ function openCfg(){
 function openKeys(){
   const K=[[["Ctrl","K"],["Paleta de comandos","Command palette"]],[["N"],["Añadir certificado","Add certificate"]],[["I"],["Pegar PEM","Paste PEM"]],[["D"],["Añadir dominio","Add domain"]],
     [["J"],["Siguiente","Next"]],[["K"],["Anterior","Previous"]],[["↵"],["Editar el seleccionado","Edit selected"]],[["R"],["Anotar renovación","Record renewal"]],[["C"],["Copiar nombres","Copy names"]],
-    [["/"],["Filtrar","Filter"]],[["1","2","3","4"],["Certificados · Dominios · Calendario · Registro","Certificates · Domains · Calendar · Log"]],[["L"],["Mostrar u ocultar el registro","Show or hide the log"]],
+    [["/"],["Filtrar","Filter"]],[["1","2","3","4","5"],["Qué caduca · Certificados · Dominios · Calendario · Registro","What expires · Certificates · Domains · Calendar · Log"]],[["L"],["Mostrar u ocultar el registro","Show or hide the log"]],
     [[","],["Ajustes","Settings"]],[["Ctrl","Z"],["Deshacer","Undo"]],[["Ctrl","Y"],["Rehacer","Redo"]],[["Esc"],["Quitar filtros o cerrar","Clear filters or close"]]];
   openModal(`<h3>${L("Atajos de teclado","Keyboard shortcuts")}</h3><div class="body"><div class="keys">${K.map(([k,t])=>`<span>${kb(...k)}</span><span>${L(...t)}</span>`).join("")}</div></div>
   <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cerrar","Close")}</button></div>`);
 }
-const NEWS=[{v:"1.0",d:["22 de octubre de 2026","October 22, 2026"],items:[
+const NEWS=[{v:"1.1",d:["26 de octubre de 2026","October 26, 2026"],items:[
+  ["Nueva portada «Qué caduca»: vencidos, en aviso, al día y renovaciones automáticas que fallan, con el botón Renovar en cada fila.","New \"What expires\" home view: expired, due soon, OK and failing auto-renewals, with a Renew button on every row."],
+  ["Nuevo aspecto en azul noche, como el resto de la familia Scope.","New night-blue look, like the rest of the Scope family."]]},
+  {v:"1.0",d:["22 de octubre de 2026","October 22, 2026"],items:[
   ["Inventario de certificados TLS y dominios: cuándo vence cada uno, dónde está instalado y quién lo renueva.","Inventory of TLS certificates and domains: when each one expires, where it's installed and who renews it."],
   ["Importa certificados pegando el PEM o arrastrando .pem, .crt, .cer o .der. Se leen en el navegador y no salen del equipo.","Import certificates by pasting the PEM or dropping .pem, .crt, .cer or .der files. They're read in the browser and never leave the computer."],
   ["Aviso automático según la vida de cada certificado, preparado para las validez de 200, 100 y 47 días.","Automatic warning based on each certificate's lifetime, ready for 200, 100 and 47-day validity."],
@@ -1502,7 +1567,8 @@ $("#tree").addEventListener("click",e=>{
 });
 $("#view").addEventListener("click",e=>{
   const h=e.target.closest("th[data-sort]");if(h){const k=DB.tab,f=h.dataset.sort;SORT[k]=[f,SORT[k][0]===f?-SORT[k][1]:1];renderView();return;}
-  const a=e.target.closest("[data-act]");if(a){doAct(a.dataset.act);return;}
+  const fl=e.target.closest("[data-fl]");if(fl){FL=FL===fl.dataset.fl?null:fl.dataset.fl;render();return;}
+  const a=e.target.closest("[data-act]");if(a){const ra=a.closest("[data-id]");if(ra)SEL={k:ra.dataset.k,id:ra.dataset.id};doAct(a.dataset.act);return;}
   const r=e.target.closest("[data-id]");if(!r)return;
   SEL={k:r.dataset.k,id:r.dataset.id};
   if(innerWidth<=1180){openSel();return;}   // sin inspector a la vista: se abre la ficha
@@ -1530,7 +1596,7 @@ document.addEventListener("keydown",e=>{
   if(ctrl||e.altKey)return;
   const run={"/":()=>{$("#filter").focus();},n:()=>openCert(null,true),i:openPem,d:()=>openDom(null,true),j:()=>move(1),ArrowDown:()=>move(1),k:()=>move(-1),ArrowUp:()=>move(-1),
     Enter:openSel,e:openSel,r:()=>doAct("renew"),c:copyNames,l:()=>{DB.logOn=!DB.logOn;save();renderLog();},"?":openKeys,",":openCfg,
-    1:()=>setTab("cert"),2:()=>setTab("dom"),3:()=>setTab("cal"),4:()=>setTab("log"),
+    1:()=>setTab("sum"),2:()=>setTab("cert"),3:()=>setTab("dom"),4:()=>setTab("cal"),5:()=>setTab("log"),
     Escape:()=>{G={g:null,s:null};q="";$("#filter").value="";FL=null;render();}}[k.length===1?k.toLowerCase():k];
   if(run){e.preventDefault();run();}
 });
@@ -1609,6 +1675,8 @@ Ubg/SYQZ3bGXcyuchSpRFrtWEYeCOQlQwadjCIG94W8lCBALGA85l6PeJBE=
   ok(csvQ("=1+1")==="\"'=1+1\""&&csvQ(-3)==="-3","csv");
   ok(cleanCert({cn:""})===null&&cleanCert({cn:"a",desde:"2026-02-30"}).desde==="","limpieza");
   ok((parseDB(JSON.parse(JSON.stringify(DB)))||{certs:[]}).certs.length===DB.certs.length,"json.ida-vuelta");
+  const fl0=FL;FL=null;const sd=sumView().ids.map(([k,id])=>st((k==="cert"?DB.certs:DB.doms).find(o=>o.id===id),k));FL=fl0;
+  ok(sd.every((s,i)=>s.lvl!=="none"&&(!i||sd[i-1].d<=s.d)&&(s.lvl!=="ok"||s.d<=90)),"portada.orden");
   document.title=f.length?`CertScope selftest: FALLA ${f.length}/${n} ${f.join(",")}`:`CertScope selftest: OK ${n}`;
   (f.length?console.error:console.log)(document.title);toast(document.title);
 }

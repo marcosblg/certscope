@@ -2,6 +2,11 @@
 
 # Novedades de CertScope
 
+## v1.1 — 26 de octubre de 2026
+
+- **Portada «Qué caduca»**: cuatro tarjetas (vencidos, en aviso, al día y renovaciones automáticas que fallan) y la lista de lo que hay que renovar por urgencia, con el botón **Renovar** en cada fila. Las tarjetas filtran.
+- **Nuevo aspecto** en azul noche con acento azul, como AssetScope. Atajos: 1 portada, 2 certificados, 3 dominios, 4 calendario, 5 registro.
+
 ## v1.0 — 22 de octubre de 2026
 
 Primera versión pública, con licencia AGPL-3.0 desde el primer día.
@@ -17,6 +22,11 @@ Primera versión pública, con licencia AGPL-3.0 desde el primer día.
 ---
 
 # What's new in CertScope
+
+## v1.1 — October 26, 2026
+
+- **"What expires" home view**: four cards (expired, due soon, OK and failing auto-renewals) and the list of what needs renewing by urgency, with a **Renew** button on every row. The cards filter.
+- **New look** in night blue with a blue accent, like AssetScope. Shortcuts: 1 home, 2 certificates, 3 domains, 4 calendar, 5 log.
 
 ## v1.0 — October 22, 2026
 
