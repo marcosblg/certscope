@@ -16,7 +16,7 @@ Nothing to install or download: the link opens the tool with sample certificates
 
 ![CertScope demo](docs/demo.en.gif)
 
-🎬 **[Watch the demo video (30 s)](docs/demo.en.mp4)**: a failed auto-renewal is renewed by hand by pasting the PEM, a new certificate is added and the reminder calendar is exported.
+🎬 **[Watch the demo video (25 s)](docs/demo.en.mp4)**: the output of `certbot certificates` is imported; the preview flags two renewals and one new certificate, and they're recorded in the log.
 
 ## What it does
 
@@ -50,6 +50,22 @@ Nothing to install or download: the link opens the tool with sample certificates
 - **Saved to your own file**: link it once and it's rewritten every time you change something.
 - Change log, undo and redo (Ctrl+Z / Ctrl+Y), command palette (Ctrl+K), keyboard shortcuts and light or dark theme.
 
+## Import from where you already have them
+
+If certbot, cert-manager or win-acme already renews your certificates, or Prometheus already watches them, there's no need to add them by hand. Click **Import** (key **I**), pick the source, copy the command, run it where it belongs and paste the output (or drop the file).
+
+| Source | Command | What's imported |
+|---|---|---|
+| **cert-manager** (Kubernetes) | `kubectl get certificates -A -o json` | Name, namespace (as server), dnsNames, expiry and issuer. Auto-renewal. If it isn't *Ready*, the reason goes to the notes. |
+| **Prometheus** + blackbox_exporter | `curl -sg 'http://prometheus:9090/federate?match[]=probe_ssl_earliest_cert_expiry'` | Each `instance` as server, with its expiry. |
+| **certbot** | `sudo certbot certificates` | Domains, expiry, serial number and key type. Auto-renewal. |
+| **win-acme** | The `*.renewal.json` files in `%ProgramData%\win-acme` (the exact command is in the window) | Names, last successful renewal and expiry. Auto-renewal. If the last renewal failed, the error goes to the notes. `wacs --list` output works too, but it has no expiry date. |
+| **PEM** | — | As always: `.pem`, `.crt`, `.cer` or `.der`. |
+
+Before applying you get a **preview** of what's **new**, what's a **renewal** (already there and expiring earlier) and what's **already there**, which is left alone. Drop the file without opening the window and the source is detected automatically.
+
+CertScope still connects to nothing: it only reads the text you paste. There are samples of every format in [`docs/ejemplos`](docs/ejemplos).
+
 ## What it doesn't do (on purpose)
 
 It doesn't scan the network or connect to your servers to read the certificate: the HTML can't reach the Internet. It doesn't renew anything or track software licences either. certbot, win-acme and friends do the renewing; CertScope tells you what needs renewing and where.
@@ -58,12 +74,12 @@ It doesn't scan the network or connect to your servers to read the certificate: 
 
 1. Download `index.html` (or open the [demo link](https://marcosblg.github.io/certscope/)).
 2. Double-click it to open in Chrome, Edge or Firefox. It starts with sample data.
-3. In *Settings* click **Start blank** and paste your certificates' PEM (key **I**).
+3. In *Settings* click **Start blank** and click **Import** (key **I**): PEM, certbot, cert-manager, Prometheus or win-acme.
 4. Click bottom left to have it save automatically to a file of your own.
 
 File linking works in Chrome and Edge. In Firefox it's saved in the browser and you can export the JSON whenever you like.
 
-To check the certificate reader and the calendar, open `index.html#selftest`: the tab title tells you whether everything passed.
+To check the certificate reader, the importers and the calendar, open `index.html#selftest`: the tab title tells you whether everything passed.
 
 ## Data format
 

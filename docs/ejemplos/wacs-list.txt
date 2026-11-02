@@ -1,0 +1,8 @@
+ A simple Windows ACMEv2 client (WACS)
+ Software version 2.2.9.1701 (release, pluggable, standalone, 64-bit)
+ Connecting to https://acme-v02.api.letsencrypt.org/...
+ Scheduled task looks healthy
+ Please report issues at https://github.com/win-acme/win-acme
+
+ 1: [IIS] RD Gateway, rdweb.transportesruiz.es - 6 renewals, due 2026/12/24
+ 2: [Manual] sftp.transportesruiz.es, ftp.transportesruiz.es - 3 renewals, due now, 1 error

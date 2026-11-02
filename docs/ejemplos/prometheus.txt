@@ -1,0 +1,6 @@
+# TYPE probe_ssl_earliest_cert_expiry untyped
+probe_ssl_earliest_cert_expiry{instance="https://citas.clinicasoler.com",job="blackbox-https"} 1.8011286e+09 1793613600000
+probe_ssl_earliest_cert_expiry{instance="https://citas.clinicasoler.com",job="blackbox-https-ipv6"} 1.8011286e+09 1793613600000
+probe_ssl_earliest_cert_expiry{instance="vpn.acme-logistica.es:443",job="blackbox-tcp"} 1.8099504e+09 1793613600000
+probe_ssl_earliest_cert_expiry{instance="https://intranet.transportesruiz.es/login",job="blackbox-https"} 1.799712e+09 1793613600000
+probe_ssl_earliest_cert_expiry{instance="https://tienda.transportesruiz.es",job="blackbox-https"} 1.79352e+09 1793613600000

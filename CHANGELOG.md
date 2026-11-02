@@ -2,6 +2,15 @@
 
 # Novedades de CertScope
 
+## v1.2 — 2 de noviembre de 2026
+
+**Importa de donde ya los tienes.**
+
+- **Nuevos importadores**: cert-manager (`kubectl get certificates -A -o json`), Prometheus con blackbox_exporter (`probe_ssl_earliest_cert_expiry`), certbot (`certbot certificates`) y win-acme (sus `*.renewal.json` o `wacs --list`). Los de cert-manager, certbot y win-acme quedan con renovación automática.
+- **Ventana Importar**: un botón por fuente y PEM, el comando exacto con botón **Copiar**, un cuadro para pegar la salida o arrastrar el archivo.
+- **Vista previa antes de aplicar**: nuevos, renovaciones (ya existe y vence antes) y los que ya estaban, que no se tocan.
+- La fuente se detecta sola al arrastrar el archivo. Ejemplos de cada formato en `docs/ejemplos` y comprobados en `#selftest`.
+
 ## v1.1 — 26 de octubre de 2026
 
 - **Portada «Qué caduca»**: cuatro tarjetas (vencidos, en aviso, al día y renovaciones automáticas que fallan) y la lista de lo que hay que renovar por urgencia, con el botón **Renovar** en cada fila. Las tarjetas filtran.
@@ -22,6 +31,15 @@ Primera versión pública, con licencia AGPL-3.0 desde el primer día.
 ---
 
 # What's new in CertScope
+
+## v1.2 — November 2, 2026
+
+**Import from where you already have them.**
+
+- **New importers**: cert-manager (`kubectl get certificates -A -o json`), Prometheus with blackbox_exporter (`probe_ssl_earliest_cert_expiry`), certbot (`certbot certificates`) and win-acme (its `*.renewal.json` files or `wacs --list`). Those from cert-manager, certbot and win-acme are marked as auto-renewing.
+- **Import window**: one button per source plus PEM, the exact command with a **Copy** button, and a box to paste the output or drop the file.
+- **Preview before applying**: new, renewals (already there and expiring earlier) and those already there, which are left alone.
+- The source is detected automatically when you drop the file. Samples of every format in `docs/ejemplos`, checked in `#selftest`.
 
 ## v1.1 — October 26, 2026
 

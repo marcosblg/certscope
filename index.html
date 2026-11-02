@@ -300,6 +300,11 @@ input[type=checkbox],input[type=radio]{accent-color:var(--tx);margin:0}
 .prow b{color:var(--tx);font-weight:500}
 .prow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prow .mono{margin-left:auto;flex:0 0 auto}
+.prow .tg{flex:0 0 auto;font-size:11px;border:1px solid var(--line2);border-radius:4px;padding:0 6px;color:var(--tx3)}
+.prow .tg.new{color:var(--ok);border-color:currentColor}.prow .tg.ren{color:var(--warn);border-color:currentColor}
+.seg.imp{flex-wrap:wrap;height:auto;align-self:start;max-width:100%}.seg.imp button{height:26px}
+.cmd{display:flex;gap:8px;align-items:center;min-width:0}
+.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font:12px var(--m);padding:7px 9px;border:1px solid var(--line);border-radius:6px;color:var(--tx)}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;align-items:center}
 .keys span:nth-child(odd){display:flex;gap:3px;justify-content:flex-end}
 .nv h4{margin:0 0 4px;font-size:13px;display:flex;gap:10px;align-items:baseline}
@@ -382,7 +387,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--tx);margin:0}
   <div class="sp"></div>
   <button class="cmdk" id="cmdk" title="Paleta de comandos (Ctrl+K)"><svg class="i"><use href="#search"/></svg><span>Buscar o ejecutar una acción…</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
   <div class="sp"></div>
-  <button class="b" id="pemBtn" title="Importar un certificado pegando su PEM"><svg class="i"><use href="#paste"/></svg><span>Pegar PEM</span><kbd>I</kbd></button>
+  <button class="b" id="pemBtn" title="Importar certificados: PEM, cert-manager, Prometheus, certbot o win-acme"><svg class="i"><use href="#paste"/></svg><span>Importar</span><kbd>I</kbd></button>
   <button class="b" id="expBtn"><svg class="i"><use href="#export"/></svg><span>Exportar</span><svg class="i"><use href="#down"/></svg></button>
   <button class="b pri" id="addBtn" title="Añadir certificado"><svg class="i"><use href="#plus"/></svg><span>Añadir</span><kbd>N</kbd></button>
   <div class="seg" id="lang" data-notr><button data-l="es" title="Español">ES</button><button data-l="en" title="English">EN</button></div>
@@ -462,8 +467,8 @@ const I18N=(()=>{
 "Ver novedades": "What's new",
 "Paleta de comandos (Ctrl+K)": "Command palette (Ctrl+K)",
 "Buscar o ejecutar una acción…": "Search or run an action…",
-"Importar un certificado pegando su PEM": "Import a certificate by pasting its PEM",
-"Pegar PEM": "Paste PEM",
+"Importar certificados: PEM, cert-manager, Prometheus, certbot o win-acme": "Import certificates: PEM, cert-manager, Prometheus, certbot or win-acme",
+"Importar": "Import",
 "Exportar": "Export",
 "Añadir certificado": "Add certificate",
 "Añadir": "Add",
@@ -588,7 +593,7 @@ I18N.start();
 
 <script id="app">
 "use strict";
-const KEY="certscope.v1",VERSION="1.1";
+const KEY="certscope.v1",VERSION="1.2";
 const L=(es,en)=>I18N.lang==="en"?en:es;
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const str=x=>x==null?"":String(x).trim();
@@ -618,7 +623,7 @@ const rel=d=>d===0?L("hoy","today"):d>0?L("en ","in ")+nd(d):L("hace "+nd(-d),nd
 const LVL={bad:["Vencido","Expired"],warn:["En aviso","Due soon"],ok:["Al día","OK"],none:["Sin fecha","No date"]};
 const lvlN=l=>L(...LVL[l]);
 const KIND={cert:["Certificado","Certificate"],dom:["Dominio","Domain"]};
-const LOGK={add:["Alta","Added"],pem:["Importado de PEM","Imported from PEM"],edit:["Editado","Edited"],del:["Borrado","Deleted"],
+const LOGK={add:["Alta","Added"],pem:["Importado de PEM","Imported from PEM"],ext:["Importado","Imported"],edit:["Editado","Edited"],del:["Borrado","Deleted"],
   renew:["Renovado","Renewed"],imp:["Copia importada","Backup imported"],exp:["Venció","Expired"],warn:["Entró en aviso","Became due soon"]};
 const LOGC={renew:"ok",exp:"bad",warn:"warn"};
 const nm=o=>o.cn||o.nombre||"";
@@ -919,9 +924,9 @@ const isNew=o=>FRESH&&FRESH.ids&&FRESH.ids.has(o.id)?`<i class="new">${L("NUEVO"
 function emptyBox(t,p,acts){return `<div class="empty"><h2>${t}</h2><p>${p}</p><div class="row">${acts}</div></div>`;}
 const btn=(act,icon,t,pri)=>`<button class="b${pri?" pri":""}" data-act="${act}">${ico(icon)}${t}</button>`;
 const noCerts=()=>emptyBox(L("Aún no hay certificados","No certificates yet"),
-  L("Pega el PEM de un certificado (o arrastra aquí un .pem, .crt o .cer) y se rellenan solos el nombre, los SAN, el emisor y las fechas. Se lee en el navegador: no sale de este equipo.",
-    "Paste a certificate's PEM (or drop a .pem, .crt or .cer file here) and the name, SANs, issuer and dates fill themselves in. It's read in the browser: it never leaves this computer."),
-  btn("pem","paste",L("Pegar PEM","Paste PEM"),1)+btn("add","plus",L("Añadir a mano","Add by hand"))+btn("seed","layers",L("Ver datos de ejemplo","Load sample data")));
+  L("Pega el PEM de un certificado (o arrastra aquí un .pem, .crt o .cer) y se rellenan solos el nombre, los SAN, el emisor y las fechas. También importa de cert-manager, Prometheus, certbot y win-acme. Se lee en el navegador: no sale de este equipo.",
+    "Paste a certificate's PEM (or drop a .pem, .crt or .cer file here) and the name, SANs, issuer and dates fill themselves in. It also imports from cert-manager, Prometheus, certbot and win-acme. It's read in the browser: it never leaves this computer."),
+  btn("pem","paste",L("Importar","Import"),1)+btn("add","plus",L("Añadir a mano","Add by hand"))+btn("seed","layers",L("Ver datos de ejemplo","Load sample data")));
 // portada: semáforo y lo que hay que renovar, por urgencia, con la acción a mano
 function sumView(){
   const all=[...certsG().filter(hayC).map(o=>({o,k:"cert",s:st(o,"cert")})),...domsG().filter(hayD).map(o=>({o,k:"dom",s:st(o,"dom")}))];
@@ -1115,45 +1120,107 @@ function openDom(d,isNew){
 const PRIV=/PRIVATE KEY-----/;
 const pemRow=p=>{const s=p.hasta?days(p.hasta):null,l=s==null?"none":s<0?"bad":"ok";
   return `<div class="prow"><span class="dot ${l}"></span><b>${esc(p.cn)}</b><span class="mut">${esc(p.emisor)}${p.ca?" · CA":""}</span><span class="mono">${fdate(p.desde)} → ${fdate(p.hasta)}</span></div>`;};
-function openPem(){
-  openModal(`<h3>${L("Importar certificado (PEM)","Import certificate (PEM)")}</h3>
+/* ---------- importar: PEM y herramientas que ya renuevan ----------
+   Cada origen convierte la salida de su comando en certificados. Todo se lee en el navegador. */
+const day=v=>{if(v==null||v==="")return "";const d=typeof v==="number"?new Date(v*1000):new Date(String(v).trim().replace(" ","T"));return isNaN(d)?"":d.toISOString().slice(0,10);};
+const ser=h=>{h=String(h||"").replace(/[^0-9a-f]/gi,"").toUpperCase();if(h.length%2)h="0"+h;return (h.match(/../g)||[]).join(":");};
+const names=s=>String(s||"").replace(/\[[^\]]*\]/g," ").split(/[,\s]+/).map(x=>x.toLowerCase()).filter(x=>/^(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(x));
+const hostOf=s=>String(s).replace(/^[a-z][\w+.-]*:\/\//i,"").replace(/^[^@\/]*@/,"").replace(/[\/?#].*$/,"").replace(/:\d+$/,"").toLowerCase();
+const SRC={
+  pem:{t:"PEM",parse:null},
+  cm:{t:"cert-manager",auto:true,cmd:"kubectl get certificates -A -o json",
+    hint:["Ejecútalo donde tengas kubectl con acceso al clúster. Se importan nombre, namespace, dnsNames, emisor y caducidad, con renovación automática.","Run it wherever kubectl can reach the cluster. Name, namespace, dnsNames, issuer and expiry are imported, set to auto-renew."],
+    parse(t){const j=JSON.parse(t);
+      return [].concat(Array.isArray(j.items)?j.items:j).filter(x=>x&&x.spec).map(x=>{const m=x.metadata||{},s=x.spec,st=x.status||{},dn=s.dnsNames||[];
+        const rd=(st.conditions||[]).find(c=>c.type==="Ready");
+        return {cn:s.commonName||dn[0]||m.name,san:dn,emisor:(s.issuerRef||{}).name,desde:day(st.notBefore),hasta:day(st.notAfter),
+          servidor:m.namespace,servicio:"cert-manager · "+m.name,notas:rd&&rd.status!=="True"?"cert-manager: "+(rd.message||rd.reason||"Not Ready"):""};});}},
+  prom:{t:"Prometheus",cmd:"curl -sg 'http://prometheus:9090/federate?match[]=probe_ssl_earliest_cert_expiry'",
+    hint:["Saca la métrica <b>probe_ssl_earliest_cert_expiry</b> de blackbox_exporter (cambia prometheus:9090 por tu servidor). La instancia pasa a servidor y el valor, a fecha de caducidad.","Fetches the <b>probe_ssl_earliest_cert_expiry</b> metric from blackbox_exporter (replace prometheus:9090 with your server). The instance becomes the server and the value, the expiry date."],
+    parse(t){const out=[],re=/^probe_ssl_earliest_cert_expiry\{([^}]*)\}\s+(\S+)/gm;let m;
+      while((m=re.exec(t))){const inst=(/(?:^|,)\s*instance="([^"]*)"/.exec(m[1])||[])[1]||"",h=hostOf(inst),v=+m[2];
+        if(h&&isFinite(v))out.push({cn:h,hasta:day(v),servidor:inst,servicio:"blackbox_exporter"});}
+      return out;}},
+  certbot:{t:"certbot",auto:true,cmd:"sudo certbot certificates",
+    hint:["En el servidor donde corre certbot. Se importan los dominios, la caducidad, el nº de serie y el tipo de clave, con renovación automática.","On the server where certbot runs. Domains, expiry, serial and key type are imported, set to auto-renew."],
+    parse(t){return t.split(/Certificate Name:/).slice(1).map(b=>{const g=k=>((new RegExp("^\\s*"+k+":\\s*(.+)$","m")).exec(b)||[])[1]||"",dn=names(g("Domains"));
+      return {cn:dn[0],san:dn,hasta:day(g("Expiry Date").split(" (")[0]),serie:ser(g("Serial Number")),clave:g("Key Type").trim(),servicio:"certbot · "+b.split("\n")[0].trim()};});}},
+  wacs:{t:"win-acme",auto:true,cmd:`Get-ChildItem "$env:ProgramData\\win-acme" -Recurse -Filter *.renewal.json | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json } | ConvertTo-Json -Depth 8`,
+    hint:["En PowerShell como administrador, en el servidor de win-acme: junta sus archivos de renovación, que traen la caducidad. También vale la salida de <b>wacs --list</b>, pero esa solo da la fecha prevista de renovación, no la caducidad.","In PowerShell as administrator, on the win-acme server: gathers its renewal files, which include the expiry. The output of <b>wacs --list</b> also works, but it only gives the planned renewal date, not the expiry."],
+    parse(t){
+      if(/^\s*[[{]/.test(t)){let j;try{j=JSON.parse(t);}catch(e){j=JSON.parse("["+t.replace(/}\s*{/g,"},{")+"]");}   // varios .renewal.json seguidos
+        return [].concat(j).filter(r=>r&&r.Id).map(r=>{const fn=names(r.LastFriendlyName||r.FriendlyName),h=r.History||[],ok=h.filter(x=>x.Success===true).pop(),last=h[h.length-1];
+          const exp=ok&&(ok.ExpireDate||(ok.OrderResults||[]).map(o=>o.ExpireDate).filter(Boolean).sort()[0]);
+          return {cn:fn[0],san:fn,desde:day(ok&&ok.Date),hasta:day(exp),servicio:"win-acme · "+r.Id,
+            notas:last&&last.Success===false?L("win-acme: la última renovación falló. ","win-acme: the last renewal failed. ")+(last.ErrorMessages||[]).join(" "):""};});}
+      // wacs --list: " 1: [IIS] a.es, b.es - 3 renewals, due 2026/12/1, 1 error"
+      return t.split("\n").map(l=>/^\s*\d+:\s*(.+?) - \d+ renewals?(.*)$/.exec(l)).filter(Boolean).map(m=>{const fn=names(m[1]),due=/due ([^,]+)/.exec(m[2]),err=/(\d+) errors?/.exec(m[2]);
+        return {cn:fn[0],san:fn,servicio:"win-acme",notas:[due&&L("win-acme: renovación prevista ","win-acme: renewal due ")+due[1].trim(),err&&L(`win-acme: ${err[1]} error(es) al renovar`,`win-acme: ${err[1]} renewal error(s)`)].filter(Boolean).join("\n")};});}}};
+const detectSrc=t=>/probe_ssl_earliest_cert_expiry/.test(t)?"prom":/Certificate Name:/.test(t)?"certbot":/cert-manager\.io/.test(t)?"cm":
+  /"LastFriendlyName"|"TargetPluginOptions"|^\s*\d+:.* - \d+ renewals?/m.test(t)?"wacs":"";
+const fromImp=(p,auto)=>cleanCert({emisor:"",desde:"",serie:"",clave:"",huella:"",servidor:"",servicio:"",entorno:"",cliente:"",responsable:"",notas:"",...p,auto:!!auto});
+const leafs=l=>{const x=l.filter(p=>!p.ca);return x.length?x:l;};   // en una cadena solo interesa el del servidor
+// nuevo, renovación (ya existe y vence antes) o ya está (mismo nº de serie, o mismo nombre y fecha)
+function classify(list,certs){
+  certs=certs||DB.certs;const seen=new Set();
+  return list.filter(p=>{const k=p.cn.toLowerCase()+"|"+p.hasta;if(seen.has(k))return false;seen.add(k);return true;}).map(p=>{
+    const same=certs.filter(c=>c.cn.toLowerCase()===p.cn.toLowerCase());
+    if(p.serie&&certs.some(c=>c.serie===p.serie)||same.some(c=>!p.hasta||c.hasta===p.hasta))return {p,k:"dup"};
+    const prev=same.find(c=>!c.hasta||c.hasta<p.hasta);return prev?{p,k:"ren",prev}:{p,k:"new"};});
+}
+const IK={new:["Nuevo","New"],ren:["Renovación","Renewal"],dup:["Ya está","Already there"]};
+const impRow=({p,k,prev})=>{const s=p.hasta?days(p.hasta):null,l=s==null?"none":s<0?"bad":"ok";
+  return `<div class="prow"><span class="dot ${l}"></span><b>${esc(p.cn)}</b><span class="mut">${esc(p.servicio||p.emisor)}</span><span class="tg ${k}">${L(...IK[k])}</span><span class="mono">${k==="ren"?(prev.hasta?fdate(prev.hasta):"—")+" → ":""}${p.hasta?fdate(p.hasta):"—"}</span></div>`;};
+let IMP="pem";
+function openImport(src,txt){
+  IMP=SRC[src]?src:IMP;const S=SRC[IMP],pem=IMP==="pem";
+  openModal(`<h3>${L("Importar certificados","Import certificates")}</h3>
   <div class="body">
-    <div class="hint">${L("Pega uno o varios bloques <b>-----BEGIN CERTIFICATE-----</b>, elige un archivo .pem, .crt, .cer o .der, o arrástralo a la ventana. Se lee aquí, en el navegador: el certificado no sale de este equipo. Si ya existe uno con el mismo nombre y vence antes, se anota como renovación.",
-      "Paste one or more <b>-----BEGIN CERTIFICATE-----</b> blocks, choose a .pem, .crt, .cer or .der file, or drop it onto the window. It's read here, in the browser: the certificate never leaves this computer. If one with the same name already exists and expires earlier, it's recorded as a renewal.")}</div>
-    <textarea class="in" id="p_txt" rows="9" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+    <div class="seg imp" data-notr>${Object.keys(SRC).map(k=>`<button data-src="${k}"${k===IMP?' class="on"':""}>${SRC[k].t}</button>`).join("")}</div>
+    <div class="hint">${pem?L("Pega uno o varios bloques <b>-----BEGIN CERTIFICATE-----</b>, elige un archivo .pem, .crt, .cer o .der, o arrástralo a la ventana. Se lee aquí, en el navegador: el certificado no sale de este equipo. Si ya existe uno con el mismo nombre y vence antes, se anota como renovación.",
+      "Paste one or more <b>-----BEGIN CERTIFICATE-----</b> blocks, choose a .pem, .crt, .cer or .der file, or drop it onto the window. It's read here, in the browser: the certificate never leaves this computer. If one with the same name already exists and expires earlier, it's recorded as a renewal."):
+      L(...S.hint)+" "+L("Pega la salida aquí o arrastra el archivo. No se conecta a nada: solo lee lo que pegas.","Paste the output here or drop the file. Nothing is contacted: it only reads what you paste.")}</div>
+    ${S.cmd?`<div class="cmd"><code id="p_cmd">${esc(S.cmd)}</code><button class="b" id="p_copy">${ico("copy")}${L("Copiar","Copy")}</button></div>`:""}
+    <textarea class="in" id="p_txt" rows="9" spellcheck="false" placeholder="${pem?"-----BEGIN CERTIFICATE-----":L("Pega aquí la salida del comando…","Paste the command output here…")}"></textarea>
     <div class="pres" id="p_res"></div>
   </div>
   <div class="foot"><button class="b" id="p_file">${ico("upload")}${L("Elegir archivo…","Choose file…")}</button><span class="sp"></span><button class="b" id="m_cancel">${L("Cancelar","Cancel")}</button><button class="b pri" id="m_ok" disabled>${L("Importar","Import")} ${kb("Ctrl","↵")}</button></div>`,true);
-  const upd=()=>{const t=$("#p_txt").value,r=X509.peek(t);mDirty=!!t.trim();
+  const rowsOf=t=>{if(pem){const r=X509.peek(t);return {rows:classify(leafs(r.ok).map(p=>fromImp(p))),bad:r.bad};}
+    try{return {rows:classify(S.parse(t).map(p=>fromImp(p,S.auto)).filter(Boolean)),bad:0};}catch(e){return {rows:[],bad:1};}};
+  const upd=()=>{const t=$("#p_txt").value,{rows,bad}=rowsOf(t),n=k=>rows.filter(r=>r.k===k).length;mDirty=!!t.trim();
     let h=PRIV.test(t)?`<div class="alert">${L("Has pegado también una clave privada. CertScope la ignora y no la guarda, pero no la pegues en ningún sitio que no sea el servidor.","You've also pasted a private key. CertScope ignores it and doesn't store it, but don't paste it anywhere other than the server.")}</div>`:"";
-    h+=r.ok.map(pemRow).join("");
-    if(r.bad)h+=`<div class="hint c-bad">${L(r.bad+" bloque(s) no se han podido leer.",r.bad+" block(s) couldn't be read.")}</div>`;
-    else if(t.trim()&&!r.ok.length)h+=`<div class="hint">${L("No se reconoce ningún bloque CERTIFICATE todavía.","No CERTIFICATE block recognised yet.")}</div>`;
-    $("#p_res").innerHTML=h;$("#m_ok").disabled=!r.ok.length;};
+    if(rows.length)h+=`<div class="hint">${L(`Nuevos: ${n("new")} · Renovaciones: ${n("ren")} · Ya estaban: ${n("dup")}`,`New: ${n("new")} · Renewals: ${n("ren")} · Already there: ${n("dup")}`)}</div>`+rows.map(impRow).join("");
+    if(IMP==="wacs"&&rows.some(r=>!r.p.hasta))h+=`<div class="alert">${L("wacs --list no trae la fecha de caducidad: se importan los nombres, pero para las fechas usa el comando de arriba.","wacs --list doesn't include the expiry date: the names are imported, but use the command above for the dates.")}</div>`;
+    if(bad)h+=`<div class="hint c-bad">${pem?L(bad+" bloque(s) no se han podido leer.",bad+" block(s) couldn't be read."):L(`No se reconoce como salida de ${S.t}.`,`Not recognised as ${S.t} output.`)}</div>`;
+    else if(t.trim()&&!rows.length)h+=`<div class="hint">${pem?L("No se reconoce ningún bloque CERTIFICATE todavía.","No CERTIFICATE block recognised yet."):L("No se encuentra ningún certificado en lo pegado.","No certificate found in what you pasted.")}</div>`;
+    $("#p_res").innerHTML=h;$("#m_ok").disabled=!rows.some(r=>r.k!=="dup");};
   modal.oninput=upd;
-  $("#p_file").onclick=()=>pickFile(".pem,.crt,.cer,.der,.cert,.txt",true);
-  $("#m_ok").onclick=async()=>{const r=await X509.read(X509.blocks($("#p_txt").value));closeModal();applyPem(r);};
+  $$("#modal [data-src]").forEach(b=>b.onclick=()=>{if(b.dataset.src!==IMP)openImport(b.dataset.src,$("#p_txt").value);});
+  if(S.cmd)$("#p_copy").onclick=()=>copyText(S.cmd,L("Comando copiado","Command copied"));
+  $("#p_file").onclick=()=>pickFile(pem?".pem,.crt,.cer,.der,.cert,.txt":".json,.txt,.log,.prom",true);
+  $("#m_ok").onclick=async()=>{const t=$("#p_txt").value;closeModal();
+    if(pem)applyPem(await X509.read(X509.blocks(t)));else applyImport(rowsOf(t).rows,IMP);};
+  if(txt){$("#p_txt").value=txt;upd();}
   $("#p_txt").focus();
 }
-const fromPem=p=>({cn:p.cn,san:p.san,emisor:p.emisor,desde:p.desde,hasta:p.hasta,serie:p.serie,clave:p.clave,huella:p.huella||"",
-  auto:false,servidor:"",servicio:"",entorno:"",cliente:"",responsable:"",notas:""});
 function applyPem(r){
-  let list=r.ok;
-  if(!list.length){toast(L("No se ha podido leer ningún certificado","No certificate could be read"));return;}
-  const leaf=list.filter(x=>!x.ca);if(leaf.length)list=leaf;   // en una cadena solo interesa el del servidor
-  const add=[];let ren=0,dup=0;
-  for(const p of list){
-    if(DB.certs.some(c=>c.serie&&c.serie===p.serie)){dup++;continue;}
-    const prev=DB.certs.find(c=>c.cn.toLowerCase()===p.cn.toLowerCase()&&(!c.hasta||c.hasta<p.hasta));
-    if(prev){const o=prev.hasta;Object.assign(prev,{san:p.san,emisor:p.emisor,desde:p.desde,hasta:p.hasta,serie:p.serie,clave:p.clave,huella:p.huella});
-      logAdd("renew",prev.cn,fdate(o)+" → "+fdate(p.hasta));ren++;SEL={k:"cert",id:prev.id};continue;}
+  if(!r.ok.length){toast(L("No se ha podido leer ningún certificado","No certificate could be read"));return;}
+  applyImport(classify(leafs(r.ok).map(p=>fromImp(p))),"pem",r.bad);
+}
+function applyImport(rows,src,bad){
+  const S=SRC[src],add=[];let ren=0,dup=0;
+  for(const {p,k,prev} of rows){
+    if(k==="dup"){dup++;continue;}
+    if(k==="ren"){const o=prev.hasta;Object.assign(prev,{desde:p.desde,hasta:p.hasta});
+      ["emisor","serie","clave","huella"].forEach(f=>{if(p[f])prev[f]=p[f];});if(p.san.length>1||!prev.san.length)prev.san=p.san;if(S.auto)prev.auto=true;
+      logAdd("renew",prev.cn,(o?fdate(o):"—")+" → "+fdate(p.hasta));ren++;SEL={k:"cert",id:prev.id};continue;}
     add.push(p);
   }
   if(ren){save();render();}
-  if(add.length===1){openCert(fromPem(add[0]),true,true);if(ren||dup)toast(L(`${ren} renovados · ${dup} ya estaban`,`${ren} renewed · ${dup} already there`));return;}
-  add.forEach(p=>{const c=cleanCert({...fromPem(p),id:nid("c")});DB.certs.push(c);logAdd("pem",c.cn,"");SEL={k:"cert",id:c.id};});
+  if(src==="pem"&&add.length===1){openCert(add[0],true,true);if(ren||dup)toast(L(`${ren} renovados · ${dup} ya estaban`,`${ren} renewed · ${dup} already there`));return;}
+  add.forEach(p=>{const c={...p,id:nid("c")};DB.certs.push(c);logAdd(src==="pem"?"pem":"ext",c.cn,src==="pem"?"":S.t);SEL={k:"cert",id:c.id};});
   if(add.length){DB.tab="cert";save();render();}
-  toast(L(`${add.length} añadidos · ${ren} renovados · ${dup} ya estaban`,`${add.length} added · ${ren} renewed · ${dup} already there`)+(r.bad?L(` · ${r.bad} ilegibles`,` · ${r.bad} unreadable`):""));
+  toast(L(`${add.length} añadidos · ${ren} renovados · ${dup} ya estaban`,`${add.length} added · ${ren} renewed · ${dup} already there`)+(bad?L(` · ${bad} ilegibles`,` · ${bad} unreadable`):""));
 }
 const addY=(iso,n)=>isoOk((+iso.slice(0,4)+n)+iso.slice(4))||addD(iso,365*n);
 function openRenew(o,k){
@@ -1214,14 +1281,17 @@ function openCfg(){
   };
 }
 function openKeys(){
-  const K=[[["Ctrl","K"],["Paleta de comandos","Command palette"]],[["N"],["Añadir certificado","Add certificate"]],[["I"],["Pegar PEM","Paste PEM"]],[["D"],["Añadir dominio","Add domain"]],
+  const K=[[["Ctrl","K"],["Paleta de comandos","Command palette"]],[["N"],["Añadir certificado","Add certificate"]],[["I"],["Importar certificados","Import certificates"]],[["D"],["Añadir dominio","Add domain"]],
     [["J"],["Siguiente","Next"]],[["K"],["Anterior","Previous"]],[["↵"],["Editar el seleccionado","Edit selected"]],[["R"],["Anotar renovación","Record renewal"]],[["C"],["Copiar nombres","Copy names"]],
     [["/"],["Filtrar","Filter"]],[["1","2","3","4","5"],["Qué caduca · Certificados · Dominios · Calendario · Registro","What expires · Certificates · Domains · Calendar · Log"]],[["L"],["Mostrar u ocultar el registro","Show or hide the log"]],
     [[","],["Ajustes","Settings"]],[["Ctrl","Z"],["Deshacer","Undo"]],[["Ctrl","Y"],["Rehacer","Redo"]],[["Esc"],["Quitar filtros o cerrar","Clear filters or close"]]];
   openModal(`<h3>${L("Atajos de teclado","Keyboard shortcuts")}</h3><div class="body"><div class="keys">${K.map(([k,t])=>`<span>${kb(...k)}</span><span>${L(...t)}</span>`).join("")}</div></div>
   <div class="foot"><span class="sp"></span><button class="b" id="m_cancel">${L("Cerrar","Close")}</button></div>`);
 }
-const NEWS=[{v:"1.1",d:["26 de octubre de 2026","October 26, 2026"],items:[
+const NEWS=[{v:"1.2",d:["2 de noviembre de 2026","November 2, 2026"],items:[
+  ["Importa de donde ya los tienes: cert-manager, Prometheus (blackbox_exporter), certbot y win-acme, además del PEM. Cada origen trae su comando con botón Copiar.","Import from where you already have them: cert-manager, Prometheus (blackbox_exporter), certbot and win-acme, besides PEM. Each source comes with its command and a Copy button."],
+  ["Vista previa antes de aplicar: lo nuevo, lo que es renovación y lo que ya estaba. Los de cert-manager, certbot y win-acme quedan con renovación automática.","Preview before applying: what's new, what's a renewal and what was already there. cert-manager, certbot and win-acme ones are set to auto-renew."]]},
+  {v:"1.1",d:["26 de octubre de 2026","October 26, 2026"],items:[
   ["Nueva portada «Qué caduca»: vencidos, en aviso, al día y renovaciones automáticas que fallan, con el botón Renovar en cada fila.","New \"What expires\" home view: expired, due soon, OK and failing auto-renewals, with a Renew button on every row."],
   ["Nuevo aspecto en azul noche, como el resto de la familia Scope.","New night-blue look, like the rest of the Scope family."]]},
   {v:"1.0",d:["22 de octubre de 2026","October 22, 2026"],items:[
@@ -1302,14 +1372,17 @@ const X509=(()=>{
 /* ---------- archivos y arrastrar ---------- */
 function pickFile(accept,multi){const f=$("#file");f.accept=accept;f.multiple=!!multi;f.value="";f.onchange=()=>handleFiles([...f.files]);f.click();}
 async function handleFiles(files){
-  const ders=[];let skip=0;
+  const ders=[],into=$("#p_txt")&&IMP!=="pem";let skip=0,txt="";   // con un origen elegido, el texto va a su cuadro
   for(const f of files){
     if(f.size>2e6){skip++;continue;}
-    if(/\.json$/i.test(f.name)){importJSON(await f.text(),f.name);return;}
     const b=new Uint8Array(await f.arrayBuffer());
-    if(b[0]===0x30)ders.push(b);
-    else{const bl=X509.blocks(new TextDecoder().decode(b));if(bl.length)ders.push(...bl);else skip++;}
+    if(b[0]===0x30){ders.push(b);continue;}
+    const t=new TextDecoder().decode(b);
+    if(into||detectSrc(t)){txt+=t+"\n";continue;}
+    if(/\.json$/i.test(f.name)){importJSON(t,f.name);return;}
+    const bl=X509.blocks(t);if(bl.length)ders.push(...bl);else skip++;
   }
+  if(txt){openImport(into?IMP:detectSrc(txt),txt);return;}
   if(!ders.length){toast(L("No se ha encontrado ningún certificado en ese archivo","No certificate found in that file"));return;}
   closeModal();const r=await X509.read(ders);r.bad+=skip;applyPem(r);
 }
@@ -1443,7 +1516,8 @@ function icsDialog(evs,title){
 const sel1=()=>selObj();
 const ACTS=[
   {t:["Añadir certificado","Add certificate"],k:["N"],ic:"plus",kw:"nuevo alta new",run:()=>openCert(null,true)},
-  {t:["Pegar PEM o importar certificado","Paste PEM or import certificate"],k:["I"],ic:"paste",kw:"pem crt cer der importar import",run:openPem},
+  {t:["Importar certificados","Import certificates"],k:["I"],ic:"paste",kw:"pem crt cer der importar import cert-manager prometheus certbot win-acme",run:()=>openImport()},
+  ...["cm","prom","certbot","wacs"].map(k=>({t:["Importar de "+SRC[k].t,"Import from "+SRC[k].t],ic:"upload",kw:"importar import "+k+" "+SRC[k].t,run:()=>openImport(k)})),
   {t:["Añadir dominio","Add domain"],k:["D"],ic:"globe",kw:"dominio registrador domain registrar",run:()=>openDom(null,true)},
   {t:["Anotar renovación del seleccionado","Record renewal of selected"],k:["R"],ic:"refresh",kw:"renovar renew",run:()=>{const o=sel1();if(o)openRenew(o,SEL.k);}},
   {t:["Exportar informe (PDF)","Export report (PDF)"],ic:"file",kw:"pdf imprimir print informe report",run:expPDF},
@@ -1505,14 +1579,17 @@ function select(k,id){
 function openSel(){const o=selObj();if(o)SEL.k==="cert"?openCert(o):openDom(o);}
 function copyNames(){
   const o=selObj();if(!o)return;const t=SEL.k==="cert"?[...new Set([o.cn,...o.san])].join("\n"):o.nombre;
-  const done=()=>toast(L("Copiado: ","Copied: ")+t.split("\n").length+L(" nombre(s)"," name(s)"));
+  copyText(t,L("Copiado: ","Copied: ")+t.split("\n").length+L(" nombre(s)"," name(s)"));
+}
+function copyText(t,msg){
+  const done=()=>toast(msg);
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,()=>fallback());else fallback();
   function fallback(){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");done();}catch(e){}a.remove();}
 }
 function doAct(a){
   const o=selObj();
   switch(a){
-    case "pem":return openPem();
+    case "pem":return openImport("pem");
     case "add":return openCert(null,true);
     case "dom":return openDom(null,true);
     case "seed":{const s=seed();DB.certs=s.certs;DB.doms=s.doms;DB.log=s.log;save();render();return toastUndo(L("Datos de ejemplo cargados","Sample data loaded"));}
@@ -1543,7 +1620,7 @@ addEventListener("mousedown",e=>{if(!e.target.closest("#expMenu,#expBtn"))closeM
 expMenu.addEventListener("click",e=>{const b=e.target.closest("[data-exp]");if(!b)return;closeMenu();
   ({pdf:expPDF,csv:expCSV,ics:()=>icsDialog(events()),json:expJSON,imp:()=>pickFile(".json"),file:linkFile})[b.dataset.exp]();});
 $("#addBtn").onclick=()=>openCert(null,true);
-$("#pemBtn").onclick=openPem;
+$("#pemBtn").onclick=()=>openImport();
 $("#cmdk").onclick=openPal;
 $("#cfgBtn").onclick=openCfg;
 $("#ver").onclick=openNews;
@@ -1594,7 +1671,7 @@ document.addEventListener("keydown",e=>{
   if(ctrl&&!e.shiftKey&&k.toLowerCase()==="z"){e.preventDefault();undo();return;}
   if(ctrl&&(k.toLowerCase()==="y"||e.shiftKey&&k.toLowerCase()==="z")){e.preventDefault();redo();return;}
   if(ctrl||e.altKey)return;
-  const run={"/":()=>{$("#filter").focus();},n:()=>openCert(null,true),i:openPem,d:()=>openDom(null,true),j:()=>move(1),ArrowDown:()=>move(1),k:()=>move(-1),ArrowUp:()=>move(-1),
+  const run={"/":()=>{$("#filter").focus();},n:()=>openCert(null,true),i:()=>openImport(),d:()=>openDom(null,true),j:()=>move(1),ArrowDown:()=>move(1),k:()=>move(-1),ArrowUp:()=>move(-1),
     Enter:openSel,e:openSel,r:()=>doAct("renew"),c:copyNames,l:()=>{DB.logOn=!DB.logOn;save();renderLog();},"?":openKeys,",":openCfg,
     1:()=>setTab("sum"),2:()=>setTab("cert"),3:()=>setTab("dom"),4:()=>setTab("cal"),5:()=>setTab("log"),
     Escape:()=>{G={g:null,s:null};q="";$("#filter").value="";FL=null;render();}}[k.length===1?k.toLowerCase():k];
@@ -1677,6 +1754,30 @@ Ubg/SYQZ3bGXcyuchSpRFrtWEYeCOQlQwadjCIG94W8lCBALGA85l6PeJBE=
   ok((parseDB(JSON.parse(JSON.stringify(DB)))||{certs:[]}).certs.length===DB.certs.length,"json.ida-vuelta");
   const fl0=FL;FL=null;const sd=sumView().ids.map(([k,id])=>st((k==="cert"?DB.certs:DB.doms).find(o=>o.id===id),k));FL=fl0;
   ok(sd.every((s,i)=>s.lvl!=="none"&&(!i||sd[i-1].d<=s.d)&&(s.lvl!=="ok"||s.d<=90)),"portada.orden");
+  // importadores: un trozo de cada formato (los ejemplos completos están en docs/ejemplos; la CSP no deja leerlos desde aquí)
+  try{
+    const imp=(src,t)=>SRC[src].parse(t).map(p=>fromImp(p,SRC[src].auto)).filter(Boolean);
+    const CM=JSON.stringify({kind:"List",items:[{apiVersion:"cert-manager.io/v1",kind:"Certificate",metadata:{name:"portal-tls",namespace:"prod"},
+      spec:{commonName:"portal.ejemplo.es",dnsNames:["portal.ejemplo.es","b.ejemplo.es"],issuerRef:{name:"letsencrypt-prod"}},
+      status:{notAfter:"2027-01-20T08:00:00Z",notBefore:"2026-10-22T08:00:01Z",conditions:[{type:"Ready",status:"False",message:"Failed to wait"}]}}]});
+    const cm=imp("cm",CM)[0]||{};
+    ok(cm.cn==="portal.ejemplo.es"&&cm.san.length===2&&cm.servidor==="prod"&&cm.emisor==="letsencrypt-prod"&&cm.desde==="2026-10-22"&&cm.hasta==="2027-01-20"&&cm.auto&&/Failed/.test(cm.notas),"imp.cm");
+    const PR='# TYPE probe_ssl_earliest_cert_expiry untyped\nprobe_ssl_earliest_cert_expiry{instance="https://citas.ejemplo.es/login",job="a"} 1.8011286e+09 1793613600000\nprobe_ssl_earliest_cert_expiry{job="b",instance="vpn.ejemplo.es:443"} 1809950400';
+    const pr=imp("prom",PR);
+    ok(pr.length===2&&pr[0].cn==="citas.ejemplo.es"&&pr[0].hasta==="2027-01-28"&&pr[1].cn==="vpn.ejemplo.es"&&pr[1].hasta==="2027-05-10"&&!pr[0].auto,"imp.prom");
+    ok(classify(pr.concat(pr),[]).length===2,"imp.repetidos");
+    const CB="Found the following certs:\n  Certificate Name: www.ejemplo.es\n    Serial Number: 4a7c19e2b0d35f8812ac0e6f9b3d21c47e0\n    Key Type: ECDSA\n    Domains: www.ejemplo.es ejemplo.es\n    Expiry Date: 2027-01-30 07:14:22+00:00 (VALID: 88 days)\n  Certificate Name: b.ejemplo.es\n    Domains: b.ejemplo.es\n    Expiry Date: 2026-10-01 07:14:22+00:00 (INVALID: EXPIRED)\n";
+    const cb=imp("certbot",CB);
+    ok(cb.length===2&&cb[0].cn==="www.ejemplo.es"&&cb[0].san.join()==="www.ejemplo.es,ejemplo.es"&&cb[0].hasta==="2027-01-30"&&cb[0].clave==="ECDSA"&&cb[0].serie==="04:A7:C1:9E:2B:0D:35:F8:81:2A:C0:E6:F9:B3:D2:1C:47:E0"&&cb[0].auto&&cb[1].hasta==="2026-10-01","imp.certbot");
+    const WA='{"Id":"a1","LastFriendlyName":"[IIS] RD Gateway, rd.ejemplo.es","History":[{"Date":"2026-10-30T03:00:09+01:00","Success":true,"ExpireDate":"2027-01-27T12:00:08+01:00"}]}\n{"Id":"b2","LastFriendlyName":"[Manual] sftp.ejemplo.es, ftp.ejemplo.es","History":[{"Date":"2026-09-10T03:00:05+02:00","Success":true,"OrderResults":[{"ExpireDate":"2026-12-09T12:00:04+01:00"}]},{"Success":false,"ErrorMessages":["http-01 failed"]}]}';
+    const wa=imp("wacs",WA);
+    ok(wa.length===2&&wa[0].cn==="rd.ejemplo.es"&&wa[0].san.length===1&&wa[0].desde==="2026-10-30"&&wa[0].hasta==="2027-01-27"&&wa[1].san.length===2&&wa[1].hasta==="2026-12-09"&&/http-01/.test(wa[1].notas),"imp.wacs");
+    const wl=imp("wacs"," 1: [IIS] RD Gateway, rd.ejemplo.es - 6 renewals, due 2026/12/24\n 2: [Manual] sftp.ejemplo.es - 3 renewals, due now, 1 error");
+    ok(wl.length===2&&!wl[0].hasta&&/2026\/12\/24/.test(wl[0].notas)&&/1 error/.test(wl[1].notas),"imp.wacs.list");
+    ok([CM,PR,CB,WA].map(detectSrc).join()==="cm,prom,certbot,wacs"&&detectSrc("hola")==="","imp.detecta");
+    const old=[{cn:"www.ejemplo.es",hasta:"2026-12-25",serie:""},{cn:"b.ejemplo.es",hasta:"2026-10-01",serie:""}];
+    ok(classify(cb,old).map(r=>r.k).join()==="ren,dup"&&classify(cb,[{cn:"x",serie:cb[0].serie}])[0].k==="dup","imp.clasifica");
+  }catch(err){f.push("imp:"+err.message);}
   document.title=f.length?`CertScope selftest: FALLA ${f.length}/${n} ${f.join(",")}`:`CertScope selftest: OK ${n}`;
   (f.length?console.error:console.log)(document.title);toast(document.title);
 }

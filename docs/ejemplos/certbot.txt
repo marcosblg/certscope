@@ -1,0 +1,26 @@
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Found the following certs:
+  Certificate Name: www.acme-logistica.es
+    Serial Number: 4a7c19e2b0d35f8812ac0e6f9b3d21c47e05
+    Key Type: ECDSA
+    Domains: www.acme-logistica.es acme-logistica.es
+    Expiry Date: 2027-01-30 07:14:22+00:00 (VALID: 88 days)
+    Certificate Path: /etc/letsencrypt/live/www.acme-logistica.es/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/www.acme-logistica.es/privkey.pem
+  Certificate Name: staging.acme-logistica.es
+    Serial Number: 3e91d0a4c27b6f55e8a1094d7c2b38f60a1b
+    Key Type: RSA
+    Domains: staging.acme-logistica.es
+    Expiry Date: 2027-01-25 18:02:09+00:00 (VALID: 83 days)
+    Certificate Path: /etc/letsencrypt/live/staging.acme-logistica.es/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/staging.acme-logistica.es/privkey.pem
+  Certificate Name: blog.acme-logistica.es
+    Serial Number: 5b02f7e8c19a4d36b70e21fa8c4d5e9031c2
+    Key Type: ECDSA
+    Domains: blog.acme-logistica.es
+    Expiry Date: 2027-01-14 11:40:51+00:00 (VALID: 72 days)
+    Certificate Path: /etc/letsencrypt/live/blog.acme-logistica.es/fullchain.pem
+    Private Key Path: /etc/letsencrypt/live/blog.acme-logistica.es/privkey.pem
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
